@@ -134,6 +134,10 @@ class CraterSimulation:
                 parent1 = mating_pairs[i]
                 parent2 = mating_pairs[i+1]
                 
+                # Calculate total energy to distribute to offspring
+                total_offspring_energy = (parent1.energy / 2) + (parent2.energy / 2)
+                energy_per_offspring = total_offspring_energy / 2
+                
                 # Each parent loses half their energy
                 parent1.energy /= 2
                 parent2.energy /= 2
@@ -144,7 +148,7 @@ class CraterSimulation:
                 
                 # Create two offspring
                 for _ in range(2):
-                    offspring = Crater.create_offspring(parent1, parent2)
+                    offspring = Crater.create_offspring(parent1, parent2, energy=energy_per_offspring)
                     offspring.font = self.font
                     new_craters.append(offspring)
                 

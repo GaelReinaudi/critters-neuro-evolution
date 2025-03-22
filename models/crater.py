@@ -523,7 +523,7 @@ class Crater:
         return fitness
     
     @classmethod
-    def create_offspring(cls, parent1, parent2, mutation_rate=MUTATION_RATE, mutation_scale=MUTATION_SCALE):
+    def create_offspring(cls, parent1, parent2, mutation_rate=MUTATION_RATE, mutation_scale=MUTATION_SCALE, energy=INITIAL_ENERGY):
         """
         Create a new crater as an offspring of two parents with mutations
         
@@ -532,6 +532,7 @@ class Crater:
             parent2 (Crater): Second parent crater
             mutation_rate (float): Probability of mutation for each weight
             mutation_scale (float): Scale of mutations
+            energy (float): Initial energy for the offspring
             
         Returns:
             Crater: New crater with combined brain from parents and mutations
@@ -619,7 +620,10 @@ class Crater:
         parent_pos = parent1 if random.random() < 0.5 else parent2
         
         # Create a new crater with the combined brain at parent's position
-        return cls(x=parent_pos.x, y=parent_pos.y, brain=child_brain, font=parent1.font)
+        offspring = cls(x=parent_pos.x, y=parent_pos.y, brain=child_brain, font=parent1.font)
+        offspring.energy = energy  # Set the offspring's initial energy
+        
+        return offspring
     
     def get_age_color(self):
         """
