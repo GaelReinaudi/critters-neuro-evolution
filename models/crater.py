@@ -11,7 +11,8 @@ from craters.config import (
     DIRECTION_COLOR, ENERGY_TEXT_COLOR, INITIAL_ENERGY,
     MAX_ENERGY, ENERGY_DEPLETION_RATE, ENERGY_ROTATION_COST,
     FONT_SIZE, MAX_SPEED, ACCELERATION_FACTOR, FRICTION,
-    MUTATION_RATE, MUTATION_SCALE
+    MUTATION_RATE, MUTATION_SCALE, MATING_COLOR,
+    MATING_ENERGY_THRESHOLD, MATING_PROBABILITY, MATING_DURATION
 )
 from craters.models.neural_network import SimpleNeuralNetwork
 
@@ -65,6 +66,10 @@ class Crater:
         self.age = 0  # Age in frames
         self.food_eaten = 0  # Number of food pellets consumed
         self.distance_traveled = 0  # Total distance traveled
+        
+        # Mating state
+        self.is_mating = False
+        self.mating_timer = 0
     
     def generate_shape(self):
         """Create the triangular shape for the crater"""
@@ -222,6 +227,35 @@ class Crater:
         
         return False
     
+    def check_mating_collision(self, craters):
+        """
+        Check for collision with other mating craters
+        
+        Args:
+            craters (list): List of all craters
+            
+        Returns:
+            Crater or None: The other crater if mating collision occurred, None otherwise
+        """
+        if not self.is_mating:
+            return None
+            
+        for other in craters:
+            # Skip self or non-mating craters
+            if other is self or not other.is_mating:
+                continue
+                
+            # Calculate distance
+            dx = other.x - self.x
+            dy = other.y - self.y
+            distance = math.sqrt(dx*dx + dy*dy)
+            
+            # If close enough
+            if distance < self.size + other.size + 10:
+                return other
+                
+        return None
+    
     def update(self, craters, food_pellets):
         """
         Update crater based on neural network output and energy level
@@ -229,13 +263,32 @@ class Crater:
         Args:
             craters (list): List of all craters
             food_pellets (list): List of all food pellets
+            
+        Returns:
+            Crater or None: Other crater if mating occurred, None otherwise
         """
         # Skip updates if too low on energy
         if self.energy <= 0:
-            return
+            return None
             
         # Increment age
         self.age += 1
+        
+        # Update mating state
+        if self.is_mating:
+            self.mating_timer -= 1
+            if self.mating_timer <= 0:
+                self.is_mating = False
+        else:
+            # Force mating state when energy is above threshold
+            if self.energy > MATING_ENERGY_THRESHOLD:
+                self.is_mating = True
+                self.mating_timer = MATING_DURATION
+        
+        # Check for mating with other craters
+        other_crater = self.check_mating_collision(craters)
+        if other_crater:
+            return other_crater
         
         # Get sensor readings
         sensor_data = self.sense_environment(craters, food_pellets)
@@ -298,6 +351,8 @@ class Crater:
         
         # Update triangle points
         self.generate_shape()
+        
+        return None
     
     def calculate_fitness(self):
         """
@@ -324,22 +379,46 @@ class Crater:
         return fitness
     
     @classmethod
-    def create_offspring(cls, parent, mutation_rate=MUTATION_RATE, mutation_scale=MUTATION_SCALE):
+    def create_offspring(cls, parent1, parent2, mutation_rate=MUTATION_RATE, mutation_scale=MUTATION_SCALE):
         """
-        Create a new crater as an offspring of the parent with mutations
+        Create a new crater as an offspring of two parents with mutations
         
         Args:
-            parent (Crater): Parent crater to inherit from
+            parent1 (Crater): First parent crater
+            parent2 (Crater): Second parent crater
             mutation_rate (float): Probability of mutation for each weight
             mutation_scale (float): Scale of mutations
             
         Returns:
-            Crater: New crater with mutated brain
+            Crater: New crater with combined brain from parents and mutations
         """
-        # Create a deep copy of the parent's brain
-        child_brain = copy.deepcopy(parent.brain)
+        # Create a new brain by combining parents
+        child_brain = copy.deepcopy(parent1.brain)
         
-        # Apply mutations to weights and biases
+        # Crossover: Mix weights from both parents (50/50 chance for each weight)
+        # Input to hidden weights
+        for i in range(child_brain.weights_ih.shape[0]):
+            for j in range(child_brain.weights_ih.shape[1]):
+                if random.random() < 0.5:
+                    child_brain.weights_ih[i, j] = parent2.brain.weights_ih[i, j]
+        
+        # Hidden biases
+        for i in range(child_brain.bias_h.shape[0]):
+            if random.random() < 0.5:
+                child_brain.bias_h[i, 0] = parent2.brain.bias_h[i, 0]
+        
+        # Hidden to output weights
+        for i in range(child_brain.weights_ho.shape[0]):
+            for j in range(child_brain.weights_ho.shape[1]):
+                if random.random() < 0.5:
+                    child_brain.weights_ho[i, j] = parent2.brain.weights_ho[i, j]
+        
+        # Output biases
+        for i in range(child_brain.bias_o.shape[0]):
+            if random.random() < 0.5:
+                child_brain.bias_o[i, 0] = parent2.brain.bias_o[i, 0]
+        
+        # Apply mutations
         # Input to hidden weights
         for i in range(child_brain.weights_ih.shape[0]):
             for j in range(child_brain.weights_ih.shape[1]):
@@ -362,8 +441,8 @@ class Crater:
             if random.random() < mutation_rate:
                 child_brain.bias_o[i, 0] += random.gauss(0, 1) * mutation_scale
         
-        # Create a new crater with the mutated brain
-        return cls(brain=child_brain, font=parent.font)
+        # Create a new crater with the combined brain
+        return cls(brain=child_brain, font=parent1.font)
     
     def draw(self, surface, draw_sensors=False):
         """
@@ -373,10 +452,15 @@ class Crater:
             surface: Pygame surface to draw on
             draw_sensors (bool): Whether to draw sensor rays
         """
-        # Crater color based on energy (from gray to white as energy increases)
-        energy_ratio = self.energy / self.max_energy
-        color_value = min(255, int(150 + 105 * energy_ratio))
-        crater_color = (color_value, color_value, color_value)
+        # Crater color based on energy and mating state
+        if self.is_mating:
+            # Magenta color for mating state
+            crater_color = MATING_COLOR
+        else:
+            # Normal color based on energy (from gray to white as energy increases)
+            energy_ratio = self.energy / self.max_energy
+            color_value = min(255, int(150 + 105 * energy_ratio))
+            crater_color = (color_value, color_value, color_value)
         
         # Draw crater triangle
         pygame.draw.polygon(surface, crater_color, self.points)

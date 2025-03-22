@@ -10,14 +10,16 @@ CRATER_COLOR = (150, 150, 150)  # Gray
 SENSOR_COLOR = (255, 0, 0)  # Red for ray visualization
 DIRECTION_COLOR = (0, 255, 255)  # Cyan for direction indicator
 FOOD_COLOR = (0, 255, 0)  # Green for food pellets
+ORANGE_FOOD_COLOR = (255, 165, 0)  # Orange for food from dead craters
 TEXT_COLOR = (255, 255, 255)  # White for general text
 ENERGY_TEXT_COLOR = (255, 0, 0)  # Red for energy display
+MATING_COLOR = (255, 0, 255)  # Magenta for mating state
 
 # Simulation parameters
-NUM_CRATERS = 100
+NUM_CRATERS = 200
 NUM_SENSORS = 8  # Number of sensor rays
 SENSOR_RANGE = 100  # How far sensors can detect
-NUM_FOOD_PELLETS = 50  # Number of food pellets
+NUM_FOOD_PELLETS = 200  # Number of food pellets
 FOOD_SPAWN_INTERVAL = 60  # Frames between food spawning attempts
 
 # Energy settings
@@ -31,6 +33,14 @@ ENERGY_ROTATION_COST = 0.05  # Energy lost per unit of rotation (decreased)
 MAX_SPEED = 4.0  # Maximum speed (increased)
 ACCELERATION_FACTOR = 0.25  # Acceleration multiplier (increased)
 FRICTION = 0.98  # Friction coefficient (reduced friction)
+
+# Mating parameters
+MATING_ENERGY_THRESHOLD = 600  # Energy required to enter mating state
+MATING_RADIUS = 40  # Distance for detecting other mating craters
+MATING_PROBABILITY = 0.005  # Chance per frame to enter mating state when above threshold
+MATING_DURATION = 300  # How long a crater stays in mating state (in frames)
+MUTATION_RATE = 0.1  # Probability of mutation for each weight
+MUTATION_SCALE = 0.2  # Scale of mutations
 
 # Display settings
 FONT_SIZE = 12  # Size for energy display

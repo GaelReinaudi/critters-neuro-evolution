@@ -5,8 +5,7 @@ import random
 import pygame
 from craters.config import (
     NUM_CRATERS, NUM_FOOD_PELLETS, TEXT_COLOR,
-    FOOD_SPAWN_INTERVAL, ENABLE_EVOLUTION, EVOLUTION_INTERVAL,
-    MIN_POPULATION, SELECTION_PERCENTAGE
+    FOOD_SPAWN_INTERVAL, ORANGE_FOOD_COLOR
 )
 from craters.models.crater import Crater
 from craters.models.food import Food
@@ -31,10 +30,10 @@ class CraterSimulation:
         self.food_spawn_timer = 0
         self.food_spawn_interval = FOOD_SPAWN_INTERVAL
         
-        # Evolution tracking
+        # Track statistics
         self.generation = 1
-        self.frames_since_evolution = 0
-        self.evolution_history = []  # Track fitness across generations
+        self.mating_events = 0
+        self.births = 0
     
     def update(self):
         """
@@ -42,18 +41,52 @@ class CraterSimulation:
         """
         # Update craters and handle energy depletion
         craters_to_remove = []
+        mating_pairs = []  # Track craters that are mating this frame
+        new_craters = []  # Track new craters born this frame
         
+        # First pass: update all craters and check for mating
         for i, crater in enumerate(self.craters):
-            # Update crater
-            crater.update(self.craters, self.food_pellets)
+            # Update crater (returns other crater if mating occurred)
+            other_crater = crater.update(self.craters, self.food_pellets)
+            
+            if other_crater and other_crater not in mating_pairs and crater not in mating_pairs:
+                mating_pairs.append(crater)
+                mating_pairs.append(other_crater)
             
             # Check if crater ran out of energy
             if crater.energy <= 0:
                 # Mark for removal and create food pellet at its position
                 craters_to_remove.append(i)
-                # Create new food pellet at crater's position
-                new_food = Food(crater.x, crater.y)
+                # Create new orange food pellet at crater's position
+                new_food = Food(crater.x, crater.y, color=ORANGE_FOOD_COLOR)
                 self.food_pellets.append(new_food)
+        
+        # Handle mating pairs
+        for i in range(0, len(mating_pairs), 2):
+            if i+1 < len(mating_pairs):  # Ensure we have a pair
+                parent1 = mating_pairs[i]
+                parent2 = mating_pairs[i+1]
+                
+                # Each parent loses half their energy
+                parent1.energy /= 2
+                parent2.energy /= 2
+                
+                # Reset mating state
+                parent1.is_mating = False
+                parent2.is_mating = False
+                
+                # Create two offspring
+                for _ in range(2):
+                    offspring = Crater.create_offspring(parent1, parent2)
+                    offspring.font = self.font
+                    new_craters.append(offspring)
+                
+                # Track mating statistics
+                self.mating_events += 1
+                self.births += 2
+        
+        # Add new craters
+        self.craters.extend(new_craters)
         
         # Remove dead craters (in reverse order to avoid index issues)
         for i in sorted(craters_to_remove, reverse=True):
@@ -73,76 +106,6 @@ class CraterSimulation:
                         food.active = True
                         break
             self.food_spawn_timer = 0
-        
-        # Check if we should evolve the population
-        if ENABLE_EVOLUTION:
-            self.frames_since_evolution += 1
-            
-            # Evolve if it's been long enough or population is too small
-            if (self.frames_since_evolution >= EVOLUTION_INTERVAL or 
-                len(self.craters) <= MIN_POPULATION):
-                self.evolve_population()
-                self.frames_since_evolution = 0
-    
-    def evolve_population(self):
-        """
-        Apply evolutionary algorithm to the crater population:
-        1. Select top-performing craters as parents
-        2. Create offspring with mutations
-        3. Replace population with offspring
-        """
-        if not self.craters:  # No craters to evolve
-            self.craters = [Crater(font=self.font) for _ in range(NUM_CRATERS)]
-            return
-        
-        # Calculate fitness for all craters
-        for crater in self.craters:
-            crater.calculate_fitness()
-        
-        # Sort craters by fitness (descending)
-        self.craters.sort(key=lambda c: c.calculate_fitness(), reverse=True)
-        
-        # Record best fitness for history
-        if self.craters:
-            best_fitness = self.craters[0].calculate_fitness()
-            avg_fitness = sum(c.calculate_fitness() for c in self.craters) / len(self.craters)
-            self.evolution_history.append((self.generation, best_fitness, avg_fitness))
-        
-        # Select top percentage as parents
-        num_parents = max(2, int(len(self.craters) * SELECTION_PERCENTAGE))
-        parents = self.craters[:num_parents]
-        
-        # Create new population from parents
-        new_population = []
-        
-        # First, keep the best parent unchanged (elitism)
-        if parents:
-            new_population.append(Crater(
-                brain=parents[0].brain,  # Keep brain unchanged
-                font=self.font
-            ))
-        
-        # Fill the rest with offspring
-        while len(new_population) < NUM_CRATERS:
-            # Select a random parent (weighted by fitness)
-            parent = random.choices(
-                parents,
-                weights=[c.calculate_fitness() for c in parents],
-                k=1
-            )[0]
-            
-            # Create an offspring with mutations
-            offspring = Crater.create_offspring(parent)
-            offspring.font = self.font
-            new_population.append(offspring)
-        
-        # Replace the old population
-        self.craters = new_population
-        
-        # Increment generation counter
-        self.generation += 1
-        
-        print(f"Evolution completed. Generation {self.generation}, Population: {len(self.craters)}")
     
     def draw(self, surface):
         """
@@ -163,17 +126,17 @@ class CraterSimulation:
         if self.font:
             active_food = sum(1 for food in self.food_pellets if food.active)
             active_craters = len(self.craters)
+            mating_craters = sum(1 for crater in self.craters if crater.is_mating)
             
             # Basic info
-            info_text = f"Food: {active_food} | Craters: {active_craters}/{NUM_CRATERS} | Generation: {self.generation}"
+            info_text = f"Food: {active_food} | Craters: {active_craters}"
             text_surface = self.font.render(info_text, True, TEXT_COLOR)
             surface.blit(text_surface, (10, 10))
             
-            # Evolution info
-            if self.evolution_history and self.font:
-                gen_info = f"Evolution in: {(EVOLUTION_INTERVAL - self.frames_since_evolution) // 60}s"
-                evolution_surface = self.font.render(gen_info, True, TEXT_COLOR)
-                surface.blit(evolution_surface, (10, 30))
+            # Mating info
+            mating_info = f"Mating Craters: {mating_craters} | Mating Events: {self.mating_events} | Births: {self.births}"
+            mating_surface = self.font.render(mating_info, True, TEXT_COLOR)
+            surface.blit(mating_surface, (10, 30))
     
     def toggle_sensors(self):
         """Toggle the visibility of sensor rays"""

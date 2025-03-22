@@ -1,6 +1,6 @@
 # Crater Simulation
 
-A 2D simulation of triangular craters moving on a plane with neural network-controlled behavior, energy management, and evolutionary optimization.
+A 2D simulation of triangular craters moving on a plane with neural network-controlled behavior, energy management, and natural mating-based evolution.
 
 ## Requirements
 - Python 3.x
@@ -14,7 +14,6 @@ python -m craters.main
 
 ## Controls
 - **S key**: Toggle sensor visualization (on by default)
-- **E key**: Manually trigger evolution
 - **ESC key**: Quit the simulation
 
 ## Features
@@ -24,17 +23,19 @@ python -m craters.main
   - Craters must collect green food pellets to replenish energy
   - Energy level displayed as a red number on each crater
   - Craters get brighter as they gain more energy
-  - Craters that run out of energy transform into new food pellets
-- Evolutionary algorithm:
-  - Automatic evolution every 30 seconds or when population drops too low
-  - Selection of top-performing craters based on fitness metrics
-  - Fitness calculated from age, energy, food consumption, and distance traveled
-  - Offspring inherit neural networks with random mutations
-  - Population improves behavior over generations
+  - Craters that run out of energy transform into orange food pellets
+- Natural mating-based evolution:
+  - Craters automatically enter mating state (magenta color) when energy exceeds threshold
+  - When two mating craters meet, they produce offspring
+  - Each parent loses half its energy during reproduction
+  - Offspring inherit neural networks from both parents with some mutations
+  - Population gradually evolves more effective behaviors over time
 - Visual enhancements:
   - Cyan dot indicating direction of movement
   - Color-changing sensors (red when detecting close objects, green when clear)
   - Green food pellets appear randomly on the screen
+  - Orange food pellets come from dead craters
+  - Magenta color indicates craters in mating state
 - Each crater has 8 sensors detecting:
   - Distance to walls in different directions
   - Distance to other craters in different directions
@@ -48,9 +49,9 @@ python -m craters.main
   - Wall collision handling
 
 ## How It Works
-Each crater uses ray-casting to detect nearby objects and feeds this data to a neural network that decides how to move. The neural network outputs control thrust (forward/backward) and rotation. Craters must balance exploring to find food with conserving energy for survival. When a crater runs out of energy, it disappears and becomes a food pellet, creating a natural energy cycle in the ecosystem.
+Each crater uses ray-casting to detect nearby objects and feeds this data to a neural network that decides how to move. The neural network outputs control thrust (forward/backward) and rotation. Craters must balance exploring to find food with conserving energy for survival. When a crater runs out of energy, it disappears and becomes an orange food pellet, creating a natural energy cycle in the ecosystem.
 
-Over time, the evolutionary algorithm selects the most successful craters (those that survive longest, collect the most food, and efficiently explore the environment) and uses them as parents for the next generation. Each new generation inherits the "knowledge" encoded in the neural networks of successful parents, with small random mutations that allow for ongoing adaptation and improvement.
+When a crater's energy exceeds a threshold, it automatically enters a mating state (turning magenta). If two craters in mating state collide, they produce offspring with neural networks that combine features from both parents with some random mutations. This natural selection process favors craters with strategies that effectively find food and manage energy. Over generations, the population evolves more sophisticated behaviors without any external intervention.
 
 ## Code Structure
 The project follows a modular architecture:
@@ -69,4 +70,5 @@ Edit `config.py` to modify:
 - Neural network architecture
 - Sensor range and sensitivity
 - Movement parameters (speed, acceleration, friction)
-- Evolution parameters (interval, selection percentage, mutation rate)
+- Mating parameters (energy threshold, duration)
+- Mutation rate and scale

@@ -15,7 +15,7 @@ def main():
     
     # Set up the display
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Crater Simulation with Neural Networks and Evolution")
+    pygame.display.set_caption("Crater Simulation with Neural Networks and Natural Evolution")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont(None, FONT_SIZE)
     
@@ -26,7 +26,6 @@ def main():
     print("Simulation started.")
     print("Controls:")
     print("  S - Toggle sensor visibility")
-    print("  E - Manually trigger evolution")
     print("  ESC - Quit simulation")
     
     running = True
@@ -39,9 +38,6 @@ def main():
                 if event.key == pygame.K_s:
                     # Toggle sensor visualization
                     simulation.toggle_sensors()
-                elif event.key == pygame.K_e:
-                    # Manually trigger evolution
-                    simulation.evolve_population()
                 elif event.key == pygame.K_ESCAPE:
                     # Quit simulation
                     running = False
