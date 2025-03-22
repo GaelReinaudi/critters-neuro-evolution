@@ -659,24 +659,23 @@ class Crater:
             surface: Pygame surface to draw on
             draw_sensors (bool): Whether to draw sensor rays
         """
-        # Crater color based on mating state or age
-        if self.is_mating:
-            # Magenta color for mating state
-            crater_color = MATING_COLOR
-        else:
-            # Color based on age
-            crater_color = self.get_age_color()
-            
-            # Adjust brightness based on energy
-            energy_ratio = self.energy / self.max_energy
-            brightness_factor = 0.5 + 0.5 * energy_ratio  # 50%-100% brightness
-            r = min(255, int(crater_color[0] * brightness_factor))
-            g = min(255, int(crater_color[1] * brightness_factor))
-            b = min(255, int(crater_color[2] * brightness_factor))
-            crater_color = (r, g, b)
+        # Get color based on age
+        crater_color = self.get_age_color()
+        
+        # Adjust brightness based on energy
+        energy_ratio = self.energy / self.max_energy
+        brightness_factor = 0.5 + 0.5 * energy_ratio  # 50%-100% brightness
+        r = min(255, int(crater_color[0] * brightness_factor))
+        g = min(255, int(crater_color[1] * brightness_factor))
+        b = min(255, int(crater_color[2] * brightness_factor))
+        crater_color = (r, g, b)
         
         # Draw crater triangle
         pygame.draw.polygon(surface, crater_color, self.points)
+        
+        # If mating, draw a magenta border
+        if self.is_mating:
+            pygame.draw.polygon(surface, MATING_COLOR, self.points, width=3)
         
         # Draw direction indicator (a small dot at the front)
         front_x, front_y = self.points[0]  # First point is the front
