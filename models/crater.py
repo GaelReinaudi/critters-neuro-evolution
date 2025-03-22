@@ -464,7 +464,12 @@ class Crater:
         # Calculate distance moved
         distance_moved = math.sqrt((self.x - old_x)**2 + (self.y - old_y)**2)
         self.distance_traveled += distance_moved  # Track distance for fitness
-        movement_cost = distance_moved * ENERGY_DEPLETION_RATE
+        
+        # Make forward movement twice as efficient as backward movement
+        if self.speed > 0:  # Forward movement
+            movement_cost = distance_moved * ENERGY_DEPLETION_RATE
+        else:  # Backward movement
+            movement_cost = distance_moved * ENERGY_DEPLETION_RATE * 2
         
         # Deduct energy (movement + rotation)
         self.energy -= (movement_cost + rotation_cost)
