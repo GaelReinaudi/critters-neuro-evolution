@@ -15,7 +15,7 @@ def main():
     
     # Set up the display
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Crater Simulation with Neural Networks and Energy")
+    pygame.display.set_caption("Crater Simulation with Neural Networks and Evolution")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont(None, FONT_SIZE)
     
@@ -23,7 +23,11 @@ def main():
     simulation = CraterSimulation(font=font)
     
     # Print information about controls
-    print("Simulation started. Press 'S' to toggle sensor visibility.")
+    print("Simulation started.")
+    print("Controls:")
+    print("  S - Toggle sensor visibility")
+    print("  E - Manually trigger evolution")
+    print("  ESC - Quit simulation")
     
     running = True
     while running:
@@ -33,8 +37,14 @@ def main():
                 running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_s:
-                    # Toggle sensor visualization with 's' key
+                    # Toggle sensor visualization
                     simulation.toggle_sensors()
+                elif event.key == pygame.K_e:
+                    # Manually trigger evolution
+                    simulation.evolve_population()
+                elif event.key == pygame.K_ESCAPE:
+                    # Quit simulation
+                    running = False
         
         # Clear the screen
         screen.fill(BACKGROUND_COLOR)

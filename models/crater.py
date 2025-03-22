@@ -3,12 +3,15 @@ Crater model for the crater simulation
 """
 import random
 import math
+import copy
 import pygame
+import numpy as np
 from craters.config import (
     WIDTH, HEIGHT, SENSOR_RANGE, NUM_SENSORS,
     DIRECTION_COLOR, ENERGY_TEXT_COLOR, INITIAL_ENERGY,
     MAX_ENERGY, ENERGY_DEPLETION_RATE, ENERGY_ROTATION_COST,
-    FONT_SIZE, MAX_SPEED, ACCELERATION_FACTOR, FRICTION
+    FONT_SIZE, MAX_SPEED, ACCELERATION_FACTOR, FRICTION,
+    MUTATION_RATE, MUTATION_SCALE
 )
 from craters.models.neural_network import SimpleNeuralNetwork
 
@@ -16,7 +19,7 @@ class Crater:
     """
     Represents a crater entity with neural network-based behavior
     """
-    def __init__(self, x=None, y=None, size=None, font=None):
+    def __init__(self, x=None, y=None, size=None, font=None, brain=None):
         """
         Initialize crater with random or specified attributes
         
@@ -25,6 +28,7 @@ class Crater:
             y (float, optional): Y coordinate. If None, a random position is used.
             size (int, optional): Crater size. If None, a random size is used.
             font: Pygame font for energy display
+            brain: Neural network to use. If None, a new one is created.
         """
         # Initialize crater with random values if not provided
         self.x = x if x is not None else random.randint(50, WIDTH-50)
@@ -49,10 +53,18 @@ class Crater:
         # Neural network for crater behavior
         # Inputs: sensor readings (distance to objects in different directions) + energy
         # Outputs: forward thrust, reverse thrust, rotation
-        self.brain = SimpleNeuralNetwork(NUM_SENSORS * 2 + 1, 12, 3)
+        if brain is None:
+            self.brain = SimpleNeuralNetwork(NUM_SENSORS * 2 + 1, 12, 3)
+        else:
+            self.brain = brain
         
         # For visualizing sensor rays
         self.sensor_readings = [1.0] * NUM_SENSORS * 2
+        
+        # Evolution tracking
+        self.age = 0  # Age in frames
+        self.food_eaten = 0  # Number of food pellets consumed
+        self.distance_traveled = 0  # Total distance traveled
     
     def generate_shape(self):
         """Create the triangular shape for the crater"""
@@ -205,6 +217,7 @@ class Crater:
                 # Absorb energy
                 self.energy = min(self.max_energy, self.energy + food.energy)
                 food.active = False
+                self.food_eaten += 1  # Track food consumption for fitness
                 return True
         
         return False
@@ -221,6 +234,9 @@ class Crater:
         if self.energy <= 0:
             return
             
+        # Increment age
+        self.age += 1
+        
         # Get sensor readings
         sensor_data = self.sense_environment(craters, food_pellets)
         
@@ -255,6 +271,7 @@ class Crater:
         
         # Calculate distance moved
         distance_moved = math.sqrt((self.x - old_x)**2 + (self.y - old_y)**2)
+        self.distance_traveled += distance_moved  # Track distance for fitness
         movement_cost = distance_moved * ENERGY_DEPLETION_RATE
         
         # Deduct energy (movement + rotation)
@@ -281,6 +298,72 @@ class Crater:
         
         # Update triangle points
         self.generate_shape()
+    
+    def calculate_fitness(self):
+        """
+        Calculate fitness score based on survival, food consumption, and movement
+        
+        Returns:
+            float: Fitness score
+        """
+        # Weights for different fitness components
+        age_weight = 1.0
+        food_weight = 10.0
+        distance_weight = 0.1
+        energy_weight = 0.5
+        
+        # Calculate fitness components
+        age_fitness = self.age * age_weight
+        food_fitness = self.food_eaten * food_weight
+        distance_fitness = self.distance_traveled * distance_weight
+        energy_fitness = self.energy * energy_weight
+        
+        # Total fitness
+        fitness = age_fitness + food_fitness + distance_fitness + energy_fitness
+        
+        return fitness
+    
+    @classmethod
+    def create_offspring(cls, parent, mutation_rate=MUTATION_RATE, mutation_scale=MUTATION_SCALE):
+        """
+        Create a new crater as an offspring of the parent with mutations
+        
+        Args:
+            parent (Crater): Parent crater to inherit from
+            mutation_rate (float): Probability of mutation for each weight
+            mutation_scale (float): Scale of mutations
+            
+        Returns:
+            Crater: New crater with mutated brain
+        """
+        # Create a deep copy of the parent's brain
+        child_brain = copy.deepcopy(parent.brain)
+        
+        # Apply mutations to weights and biases
+        # Input to hidden weights
+        for i in range(child_brain.weights_ih.shape[0]):
+            for j in range(child_brain.weights_ih.shape[1]):
+                if random.random() < mutation_rate:
+                    child_brain.weights_ih[i, j] += random.gauss(0, 1) * mutation_scale
+        
+        # Hidden biases
+        for i in range(child_brain.bias_h.shape[0]):
+            if random.random() < mutation_rate:
+                child_brain.bias_h[i, 0] += random.gauss(0, 1) * mutation_scale
+        
+        # Hidden to output weights
+        for i in range(child_brain.weights_ho.shape[0]):
+            for j in range(child_brain.weights_ho.shape[1]):
+                if random.random() < mutation_rate:
+                    child_brain.weights_ho[i, j] += random.gauss(0, 1) * mutation_scale
+        
+        # Output biases
+        for i in range(child_brain.bias_o.shape[0]):
+            if random.random() < mutation_rate:
+                child_brain.bias_o[i, 0] += random.gauss(0, 1) * mutation_scale
+        
+        # Create a new crater with the mutated brain
+        return cls(brain=child_brain, font=parent.font)
     
     def draw(self, surface, draw_sensors=False):
         """

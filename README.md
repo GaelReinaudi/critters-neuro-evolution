@@ -1,6 +1,6 @@
 # Crater Simulation
 
-A 2D simulation of triangular craters moving on a plane with neural network-controlled behavior and energy management.
+A 2D simulation of triangular craters moving on a plane with neural network-controlled behavior, energy management, and evolutionary optimization.
 
 ## Requirements
 - Python 3.x
@@ -14,7 +14,8 @@ python -m craters.main
 
 ## Controls
 - **S key**: Toggle sensor visualization (on by default)
-- **Close window**: Quit the simulation
+- **E key**: Manually trigger evolution
+- **ESC key**: Quit the simulation
 
 ## Features
 - 100 triangular craters with neural network-controlled movement
@@ -24,6 +25,12 @@ python -m craters.main
   - Energy level displayed as a red number on each crater
   - Craters get brighter as they gain more energy
   - Craters that run out of energy transform into new food pellets
+- Evolutionary algorithm:
+  - Automatic evolution every 30 seconds or when population drops too low
+  - Selection of top-performing craters based on fitness metrics
+  - Fitness calculated from age, energy, food consumption, and distance traveled
+  - Offspring inherit neural networks with random mutations
+  - Population improves behavior over generations
 - Visual enhancements:
   - Cyan dot indicating direction of movement
   - Color-changing sensors (red when detecting close objects, green when clear)
@@ -43,6 +50,8 @@ python -m craters.main
 ## How It Works
 Each crater uses ray-casting to detect nearby objects and feeds this data to a neural network that decides how to move. The neural network outputs control thrust (forward/backward) and rotation. Craters must balance exploring to find food with conserving energy for survival. When a crater runs out of energy, it disappears and becomes a food pellet, creating a natural energy cycle in the ecosystem.
 
+Over time, the evolutionary algorithm selects the most successful craters (those that survive longest, collect the most food, and efficiently explore the environment) and uses them as parents for the next generation. Each new generation inherits the "knowledge" encoded in the neural networks of successful parents, with small random mutations that allow for ongoing adaptation and improvement.
+
 ## Code Structure
 The project follows a modular architecture:
 - `config.py` - Central configuration parameters
@@ -60,3 +69,4 @@ Edit `config.py` to modify:
 - Neural network architecture
 - Sensor range and sensitivity
 - Movement parameters (speed, acceleration, friction)
+- Evolution parameters (interval, selection percentage, mutation rate)

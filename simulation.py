@@ -1,10 +1,12 @@
 """
 Main simulation logic for crater simulation
 """
+import random
 import pygame
 from craters.config import (
     NUM_CRATERS, NUM_FOOD_PELLETS, TEXT_COLOR,
-    FOOD_SPAWN_INTERVAL
+    FOOD_SPAWN_INTERVAL, ENABLE_EVOLUTION, EVOLUTION_INTERVAL,
+    MIN_POPULATION, SELECTION_PERCENTAGE
 )
 from craters.models.crater import Crater
 from craters.models.food import Food
@@ -28,6 +30,11 @@ class CraterSimulation:
         self.show_sensors = True  # Toggle for sensor visualization
         self.food_spawn_timer = 0
         self.food_spawn_interval = FOOD_SPAWN_INTERVAL
+        
+        # Evolution tracking
+        self.generation = 1
+        self.frames_since_evolution = 0
+        self.evolution_history = []  # Track fitness across generations
     
     def update(self):
         """
@@ -66,6 +73,76 @@ class CraterSimulation:
                         food.active = True
                         break
             self.food_spawn_timer = 0
+        
+        # Check if we should evolve the population
+        if ENABLE_EVOLUTION:
+            self.frames_since_evolution += 1
+            
+            # Evolve if it's been long enough or population is too small
+            if (self.frames_since_evolution >= EVOLUTION_INTERVAL or 
+                len(self.craters) <= MIN_POPULATION):
+                self.evolve_population()
+                self.frames_since_evolution = 0
+    
+    def evolve_population(self):
+        """
+        Apply evolutionary algorithm to the crater population:
+        1. Select top-performing craters as parents
+        2. Create offspring with mutations
+        3. Replace population with offspring
+        """
+        if not self.craters:  # No craters to evolve
+            self.craters = [Crater(font=self.font) for _ in range(NUM_CRATERS)]
+            return
+        
+        # Calculate fitness for all craters
+        for crater in self.craters:
+            crater.calculate_fitness()
+        
+        # Sort craters by fitness (descending)
+        self.craters.sort(key=lambda c: c.calculate_fitness(), reverse=True)
+        
+        # Record best fitness for history
+        if self.craters:
+            best_fitness = self.craters[0].calculate_fitness()
+            avg_fitness = sum(c.calculate_fitness() for c in self.craters) / len(self.craters)
+            self.evolution_history.append((self.generation, best_fitness, avg_fitness))
+        
+        # Select top percentage as parents
+        num_parents = max(2, int(len(self.craters) * SELECTION_PERCENTAGE))
+        parents = self.craters[:num_parents]
+        
+        # Create new population from parents
+        new_population = []
+        
+        # First, keep the best parent unchanged (elitism)
+        if parents:
+            new_population.append(Crater(
+                brain=parents[0].brain,  # Keep brain unchanged
+                font=self.font
+            ))
+        
+        # Fill the rest with offspring
+        while len(new_population) < NUM_CRATERS:
+            # Select a random parent (weighted by fitness)
+            parent = random.choices(
+                parents,
+                weights=[c.calculate_fitness() for c in parents],
+                k=1
+            )[0]
+            
+            # Create an offspring with mutations
+            offspring = Crater.create_offspring(parent)
+            offspring.font = self.font
+            new_population.append(offspring)
+        
+        # Replace the old population
+        self.craters = new_population
+        
+        # Increment generation counter
+        self.generation += 1
+        
+        print(f"Evolution completed. Generation {self.generation}, Population: {len(self.craters)}")
     
     def draw(self, surface):
         """
@@ -86,9 +163,17 @@ class CraterSimulation:
         if self.font:
             active_food = sum(1 for food in self.food_pellets if food.active)
             active_craters = len(self.craters)
-            info_text = f"Food: {active_food} | Craters: {active_craters}/{NUM_CRATERS}"
+            
+            # Basic info
+            info_text = f"Food: {active_food} | Craters: {active_craters}/{NUM_CRATERS} | Generation: {self.generation}"
             text_surface = self.font.render(info_text, True, TEXT_COLOR)
             surface.blit(text_surface, (10, 10))
+            
+            # Evolution info
+            if self.evolution_history and self.font:
+                gen_info = f"Evolution in: {(EVOLUTION_INTERVAL - self.frames_since_evolution) // 60}s"
+                evolution_surface = self.font.render(gen_info, True, TEXT_COLOR)
+                surface.blit(evolution_surface, (10, 30))
     
     def toggle_sensors(self):
         """Toggle the visibility of sensor rays"""
