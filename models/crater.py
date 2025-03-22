@@ -64,12 +64,12 @@ class Crater:
         # Inputs: sensor readings (distance to objects in different directions) + energy
         # Outputs: forward thrust, reverse thrust, rotation
         if brain is None:
-            self.brain = SimpleNeuralNetwork(NUM_SENSORS * 2 + 1, 12, 3)
+            self.brain = SimpleNeuralNetwork(NUM_SENSORS * 3 + 1, 12, 3)
         else:
             self.brain = brain
         
         # For visualizing sensor rays
-        self.sensor_readings = [1.0] * NUM_SENSORS * 2
+        self.sensor_readings = [1.0] * NUM_SENSORS * 3
         
         # Evolution tracking
         self.age = 0  # Age in frames
@@ -118,7 +118,7 @@ class Crater:
     
     def sense_environment(self, craters, food_pellets, force_update=False):
         """
-        Cast rays in different directions to detect walls and other craters
+        Cast rays in different directions to detect walls, other craters, and food
         
         Args:
             craters (list): List of all craters in the environment
@@ -153,7 +153,9 @@ class Crater:
             crater_distance = self.get_crater_distance(angle, craters)
             self.sensor_readings.append(min(crater_distance / SENSOR_RANGE, 1.0))
             
-            # Future enhancement: detect food (currently not used in neural input)
+            # Food distance
+            food_distance = self.get_food_distance(angle, food_pellets)
+            self.sensor_readings.append(min(food_distance / SENSOR_RANGE, 1.0))
         
         # Cache the sensor data
         self.cached_sensor_data = self.sensor_readings.copy()
@@ -253,6 +255,70 @@ class Crater:
                 
             # Project distance
             distance = distance_to_center * math.cos(angle_diff) - crater.size
+            
+            if distance < min_distance:
+                min_distance = max(0, distance)
+        
+        return min_distance
+    
+    def get_food_distance(self, angle, food_pellets):
+        """
+        Calculate distance to the nearest food in the given direction
+        
+        Args:
+            angle (float): Angle of the ray in radians
+            food_pellets (list): List of all food pellets
+            
+        Returns:
+            float: Distance to the nearest food
+        """
+        # Ray starting point
+        ray_x = self.x
+        ray_y = self.y
+        
+        # Get ray direction
+        if PRECOMPUTE_ANGLES and angle % (2 * math.pi) in SIN_COS_CACHE:
+            ray_dy, ray_dx = SIN_COS_CACHE[angle % (2 * math.pi)]
+        else:
+            ray_dx = math.cos(angle)
+            ray_dy = math.sin(angle)
+        
+        min_distance = SENSOR_RANGE
+        
+        # Only check food pellets that are potentially in range
+        for food in food_pellets:
+            if not food.active:
+                continue
+                
+            # Quick distance check first to avoid unnecessary calculation
+            dx = food.x - ray_x
+            dy = food.y - ray_y
+            distance_squared = dx*dx + dy*dy
+            
+            # Skip if food is definitely too far away
+            cutoff_squared = (DISTANCE_CUTOFF + food.size) ** 2
+            if distance_squared > cutoff_squared:
+                continue
+                
+            # Distance to food center
+            distance_to_center = math.sqrt(distance_squared)
+            if distance_to_center > SENSOR_RANGE + food.size:
+                continue
+                
+            # Angle to food
+            angle_to_food = math.atan2(dy, dx)
+            
+            # Normalize angle difference to [-pi, pi]
+            angle_diff = (angle_to_food - angle) % (2 * math.pi)
+            if angle_diff > math.pi:
+                angle_diff -= 2 * math.pi
+                
+            # If not in ray direction (within a small cone), skip
+            if abs(angle_diff) > 0.5:  # About 30 degrees
+                continue
+                
+            # Project distance
+            distance = distance_to_center * math.cos(angle_diff) - food.size
             
             if distance < min_distance:
                 min_distance = max(0, distance)
@@ -583,25 +649,36 @@ class Crater:
         if draw_sensors and self.energy > 0:
             for i in range(NUM_SENSORS):
                 angle = self.rotation + (i * (2 * math.pi / NUM_SENSORS))
-                # Distance from sensor readings (wall and crater)
-                wall_dist = self.sensor_readings[i*2] * SENSOR_RANGE
-                crater_dist = self.sensor_readings[i*2+1] * SENSOR_RANGE
+                # Distance from sensor readings (wall, crater, and food)
+                wall_dist = self.sensor_readings[i*3] * SENSOR_RANGE
+                crater_dist = self.sensor_readings[i*3+1] * SENSOR_RANGE
+                food_dist = self.sensor_readings[i*3+2] * SENSOR_RANGE
                 
-                # Use minimum of wall and crater distance
-                ray_length = min(wall_dist, crater_dist)
+                # Use minimum of wall and crater distance for obstacle detection
+                obstacle_length = min(wall_dist, crater_dist)
                 
-                # Calculate end point
-                end_x = self.x + ray_length * math.cos(angle)
-                end_y = self.y + ray_length * math.sin(angle)
+                # Draw obstacle sensor
+                obstacle_end_x = self.x + obstacle_length * math.cos(angle)
+                obstacle_end_y = self.y + obstacle_length * math.sin(angle)
                 
                 # Change color based on detection (from red when close to green when far)
-                # Normalized distance (0 to 1)
-                detection_ratio = ray_length / SENSOR_RANGE
-                # Red component decreases with distance
+                detection_ratio = obstacle_length / SENSOR_RANGE
                 red = int(255 * (1 - detection_ratio))
-                # Green component increases with distance
                 green = int(255 * detection_ratio)
-                sensor_color = (red, green, 0)
+                obstacle_color = (red, green, 0)
                 
-                # Draw the ray
-                pygame.draw.line(surface, sensor_color, (self.x, self.y), (end_x, end_y), 2) 
+                # Draw the obstacle ray
+                pygame.draw.line(surface, obstacle_color, (self.x, self.y), 
+                               (obstacle_end_x, obstacle_end_y), 2)
+                
+                # Draw food sensor (only if it's closer than obstacles)
+                if food_dist < obstacle_length:
+                    food_end_x = self.x + food_dist * math.cos(angle)
+                    food_end_y = self.y + food_dist * math.sin(angle)
+                    
+                    # Blue color for food detection
+                    food_color = (0, 200, 255)  # Cyan-ish blue
+                    
+                    # Draw the food ray
+                    pygame.draw.line(surface, food_color, (self.x, self.y),
+                                  (food_end_x, food_end_y), 3) 
