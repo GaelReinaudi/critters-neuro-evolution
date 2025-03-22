@@ -1,6 +1,6 @@
 # Crater Simulation
 
-A 2D simulation of triangular craters moving on a plane with neural network-controlled behavior.
+A 2D simulation of triangular craters moving on a plane with neural network-controlled behavior and energy management.
 
 ## Requirements
 - Python 3.x
@@ -18,14 +18,21 @@ python craters_sim.py
 
 ## Features
 - 100 triangular craters with neural network-controlled movement
+- Energy system:
+  - Craters consume energy when moving and rotating
+  - Craters must collect green food pellets to replenish energy
+  - Energy level displayed as a red number on each crater
+  - Craters get brighter as they gain more energy
+  - Craters that run out of energy transform into new food pellets
 - Visual enhancements:
   - Cyan dot indicating direction of movement
   - Color-changing sensors (red when detecting close objects, green when clear)
+  - Green food pellets appear randomly on the screen
 - Each crater has 8 sensors detecting:
   - Distance to walls in different directions
   - Distance to other craters in different directions
 - Simple neural network with:
-  - 16 inputs (8 directions x 2 readings per direction)
+  - 17 inputs (8 directions x 2 readings per direction + energy level)
   - 12 hidden neurons
   - 3 outputs (forward thrust, reverse thrust, rotation)
 - Realistic physics with:
@@ -34,11 +41,11 @@ python craters_sim.py
   - Wall collision handling
 
 ## How It Works
-Each crater uses ray-casting to detect nearby objects and feeds this data to a neural network that decides how to move. The neural network outputs control thrust (forward/backward) and rotation, creating emergent behavior patterns.
+Each crater uses ray-casting to detect nearby objects and feeds this data to a neural network that decides how to move. The neural network outputs control thrust (forward/backward) and rotation. Craters must balance exploring to find food with conserving energy for survival. When a crater runs out of energy, it disappears and becomes a food pellet, creating a natural energy cycle in the ecosystem.
 
 ## Customization
 Edit `craters_sim.py` to modify:
-- Number of craters
-- Simulation parameters
+- Number of craters and food pellets
+- Energy consumption and replenishment rates
 - Neural network architecture
 - Sensor range and sensitivity
