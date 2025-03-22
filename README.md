@@ -9,7 +9,7 @@ A 2D simulation of triangular craters moving on a plane with neural network-cont
 
 ## Running the Simulation
 ```
-python craters_sim.py
+python -m craters.main
 ```
 
 ## Controls
@@ -43,9 +43,20 @@ python craters_sim.py
 ## How It Works
 Each crater uses ray-casting to detect nearby objects and feeds this data to a neural network that decides how to move. The neural network outputs control thrust (forward/backward) and rotation. Craters must balance exploring to find food with conserving energy for survival. When a crater runs out of energy, it disappears and becomes a food pellet, creating a natural energy cycle in the ecosystem.
 
+## Code Structure
+The project follows a modular architecture:
+- `config.py` - Central configuration parameters
+- `main.py` - Entry point to run the simulation
+- `simulation.py` - Main simulation logic class
+- `models/`
+  - `crater.py` - Crater entity with neural network brain
+  - `food.py` - Food pellet entity
+  - `neural_network.py` - Simple neural network implementation
+
 ## Customization
-Edit `craters_sim.py` to modify:
+Edit `config.py` to modify:
 - Number of craters and food pellets
 - Energy consumption and replenishment rates
 - Neural network architecture
 - Sensor range and sensitivity
+- Movement parameters (speed, acceleration, friction)

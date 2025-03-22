@@ -1,0 +1,3 @@
+"""
+Crater simulation package
+""" 
