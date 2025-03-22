@@ -62,10 +62,17 @@ class Crater:
         self.generate_shape()
         
         # Neural network for crater behavior
-        # Inputs: sensor readings (distance to objects in different directions) + energy
-        # Outputs: forward thrust, reverse thrust, rotation
+        # Inputs:
+        # - For each sensor direction:
+        #   - Wall distance
+        #   - General crater detection
+        #   - Mating crater detection
+        #   - Detected crater energy level
+        #   - Food detection
+        # - Own energy level
         if brain is None:
-            input_size = NUM_SENSORS * 3 + 1  # 3 sensor types per direction + energy
+            # 5 sensor readings per direction (wall, crater, mating, energy, food) + own energy
+            input_size = NUM_SENSORS * 5 + 1
             output_size = 3  # forward, reverse, rotation
             
             if USE_DEEP_NETWORK:
@@ -80,13 +87,19 @@ class Crater:
         else:
             self.brain = brain
         
-        # For visualizing sensor rays
-        self.sensor_readings = [1.0] * NUM_SENSORS * 3
+        # For visualizing sensor rays and storing sensor data
+        # Structure: [wall_dist, crater_dist, mating_dist, energy_level, food_dist] * NUM_SENSORS
+        self.sensor_readings = [1.0] * NUM_SENSORS * 5
         
         # Evolution tracking
         self.age = 0  # Age in frames
         self.food_eaten = 0  # Number of food pellets consumed
         self.distance_traveled = 0  # Total distance traveled
+        
+        # Inactivity tracking
+        self.inactive_frames = 0  # Count of frames with minimal movement
+        self.inactivity_threshold = 100  # Number of frames before applying penalty
+        self.movement_threshold = 0.2  # Minimum movement required to be considered active
         
         # Mating state
         self.is_mating = False
@@ -138,7 +151,7 @@ class Crater:
             force_update (bool): Whether to force update even if not time yet
             
         Returns:
-            list: Sensor readings (normalized distances)
+            list: Sensor readings (normalized distances and entity information)
         """
         # Use cached sensor data if available and not time to update
         if not force_update and self.cached_sensor_data is not None:
@@ -159,15 +172,30 @@ class Crater:
             
             # Wall distance
             wall_distance = self.get_wall_distance(angle)
-            self.sensor_readings.append(min(wall_distance / SENSOR_RANGE, 1.0))
+            wall_reading = min(wall_distance / SENSOR_RANGE, 1.0)
+            self.sensor_readings.append(wall_reading)
             
-            # Crater distance
-            crater_distance = self.get_crater_distance(angle, craters)
-            self.sensor_readings.append(min(crater_distance / SENSOR_RANGE, 1.0))
+            # Detect all types of craters
+            crater_info = self.get_crater_info(angle, craters)
+            
+            # Regular crater distance (any crater)
+            crater_distance = crater_info['distance']
+            crater_reading = min(crater_distance / SENSOR_RANGE, 1.0)
+            self.sensor_readings.append(crater_reading)
+            
+            # Mating crater distance
+            mating_distance = crater_info['mating_distance']
+            mating_reading = min(mating_distance / SENSOR_RANGE, 1.0)
+            self.sensor_readings.append(mating_reading)
+            
+            # Energy level of detected crater (normalized)
+            crater_energy = crater_info['energy_level']
+            self.sensor_readings.append(crater_energy)
             
             # Food distance
             food_distance = self.get_food_distance(angle, food_pellets)
-            self.sensor_readings.append(min(food_distance / SENSOR_RANGE, 1.0))
+            food_reading = min(food_distance / SENSOR_RANGE, 1.0)
+            self.sensor_readings.append(food_reading)
         
         # Cache the sensor data
         self.cached_sensor_data = self.sensor_readings.copy()
@@ -209,16 +237,16 @@ class Crater:
         # Limit to sensor range
         return min(wall_dist, SENSOR_RANGE)
     
-    def get_crater_distance(self, angle, craters):
+    def get_crater_info(self, angle, craters):
         """
-        Calculate distance to the nearest crater in the given direction
+        Get detailed information about craters in a specific direction
         
         Args:
             angle (float): Angle of the ray in radians
             craters (list): List of all craters
             
         Returns:
-            float: Distance to the nearest crater
+            dict: Dictionary with distance, mating status, and energy level info
         """
         # Ray starting point
         ray_x = self.x
@@ -231,6 +259,15 @@ class Crater:
             ray_dx = math.cos(angle)
             ray_dy = math.sin(angle)
         
+        # Initialize with default values (max range, no crater detected)
+        result = {
+            'distance': SENSOR_RANGE,
+            'mating_distance': SENSOR_RANGE,
+            'energy_level': 0.0
+        }
+        
+        # Track the nearest detected crater for energy reporting
+        nearest_crater = None
         min_distance = SENSOR_RANGE
         
         # Only check craters that are potentially in range
@@ -267,11 +304,22 @@ class Crater:
                 
             # Project distance
             distance = distance_to_center * math.cos(angle_diff) - crater.size
+            distance = max(0, distance)
             
-            if distance < min_distance:
-                min_distance = max(0, distance)
+            # Update general crater distance if this is closer
+            if distance < result['distance']:
+                result['distance'] = distance
+                nearest_crater = crater
+            
+            # Update mating crater distance if this crater is mating
+            if hasattr(crater, 'is_mating') and crater.is_mating and distance < result['mating_distance']:
+                result['mating_distance'] = distance
         
-        return min_distance
+        # Get energy level from the nearest crater
+        if nearest_crater and hasattr(nearest_crater, 'energy'):
+            result['energy_level'] = nearest_crater.energy / nearest_crater.max_energy
+        
+        return result
     
     def get_food_distance(self, angle, food_pellets):
         """
@@ -465,14 +513,35 @@ class Crater:
         distance_moved = math.sqrt((self.x - old_x)**2 + (self.y - old_y)**2)
         self.distance_traveled += distance_moved  # Track distance for fitness
         
+        # Track inactivity and apply penalties if necessary
+        if distance_moved < self.movement_threshold:
+            self.inactive_frames += 1
+            # Apply inactivity penalty after threshold is reached
+            if self.inactive_frames > self.inactivity_threshold:
+                # Increase energy cost as inactivity persists
+                inactivity_penalty = 0.2 * (1 + (self.inactive_frames - self.inactivity_threshold) / 100)
+                # Cap the penalty to avoid instant death
+                inactivity_penalty = min(inactivity_penalty, 2.0)
+                self.energy -= inactivity_penalty
+        else:
+            # Reset inactivity counter when there's significant movement
+            self.inactive_frames = max(0, self.inactive_frames - 2)  # Decrease twice as fast
+        
         # Make forward movement twice as efficient as backward movement
         if self.speed > 0:  # Forward movement
             movement_cost = distance_moved * ENERGY_DEPLETION_RATE
         else:  # Backward movement
             movement_cost = distance_moved * ENERGY_DEPLETION_RATE * 2
         
-        # Deduct energy (movement + rotation)
-        self.energy -= (movement_cost + rotation_cost)
+        # Calculate total energy cost
+        total_energy_cost = movement_cost + rotation_cost
+        
+        # Double energy cost when in mating mode
+        if self.is_mating:
+            total_energy_cost *= 2
+        
+        # Deduct energy
+        self.energy -= total_energy_cost
         self.energy = max(0, self.energy)  # Don't go below 0
         
         # Bounce off walls
@@ -517,10 +586,16 @@ class Crater:
         distance_fitness = self.distance_traveled * distance_weight
         energy_fitness = self.energy * energy_weight
         
-        # Total fitness
-        fitness = age_fitness + food_fitness + distance_fitness + energy_fitness
+        # Inactivity penalty for fitness calculation
+        inactivity_penalty = 0
+        if self.inactive_frames > self.inactivity_threshold:
+            inactivity_penalty = self.inactive_frames - self.inactivity_threshold
+            inactivity_penalty = min(inactivity_penalty * 0.5, age_fitness * 0.5)  # Cap at 50% of age fitness
         
-        return fitness
+        # Total fitness with inactivity penalty
+        fitness = age_fitness + food_fitness + distance_fitness + energy_fitness - inactivity_penalty
+        
+        return max(0, fitness)  # Ensure fitness is never negative
     
     @classmethod
     def create_offspring(cls, parent1, parent2, mutation_rate=MUTATION_RATE, mutation_scale=MUTATION_SCALE, energy=INITIAL_ENERGY):
@@ -682,9 +757,24 @@ class Crater:
         # Draw crater triangle
         pygame.draw.polygon(surface, crater_color, self.points)
         
-        # If mating, draw a magenta border
+        # If mating, draw a magenta border with pulsing effect to indicate energy drain
         if self.is_mating:
-            pygame.draw.polygon(surface, MATING_COLOR, self.points, width=3)
+            # Calculate pulsing effect based on mating timer (pulsing increases as timer decreases)
+            pulse_intensity = 1.5 + 0.5 * (1 - (self.mating_timer / MATING_DURATION))
+            border_width = max(2, int(3 * pulse_intensity))
+            pygame.draw.polygon(surface, MATING_COLOR, self.points, width=border_width)
+            
+            # Add small text indicator showing 2x energy consumption
+            if self.font:
+                indicator_text = self.font.render("2x", True, MATING_COLOR)
+                surface.blit(indicator_text, (self.x + self.size + 5, self.y - 15))
+        
+        # If inactive and being penalized, draw a dark red border
+        if self.inactive_frames > self.inactivity_threshold:
+            # Make border darker red as inactivity increases
+            intensity = min(255, 100 + (self.inactive_frames - self.inactivity_threshold) // 2)
+            inactive_color = (intensity, 0, 0)  # Dark red
+            pygame.draw.polygon(surface, inactive_color, self.points, width=2)
         
         # Draw direction indicator (a small dot at the front)
         front_x, front_y = self.points[0]  # First point is the front
@@ -697,38 +787,69 @@ class Crater:
         
         # Draw sensors if enabled
         if draw_sensors and self.energy > 0:
+            # Define colors for different sensor types
+            WALL_SENSOR_COLOR = (255, 0, 0)       # Red for walls
+            CRATER_SENSOR_COLOR = (255, 255, 0)   # Yellow for craters
+            MATING_SENSOR_COLOR = (255, 0, 255)   # Magenta for mating craters
+            FOOD_SENSOR_COLOR = (0, 255, 0)       # Green for food
+            
             for i in range(NUM_SENSORS):
                 angle = self.rotation + (i * (2 * math.pi / NUM_SENSORS))
-                # Distance from sensor readings (wall, crater, and food)
-                wall_dist = self.sensor_readings[i*3] * SENSOR_RANGE
-                crater_dist = self.sensor_readings[i*3+1] * SENSOR_RANGE
-                food_dist = self.sensor_readings[i*3+2] * SENSOR_RANGE
                 
-                # Use minimum of wall and crater distance for obstacle detection
-                obstacle_length = min(wall_dist, crater_dist)
+                # Index in sensor_readings array
+                base_idx = i * 5
                 
-                # Draw obstacle sensor
-                obstacle_end_x = self.x + obstacle_length * math.cos(angle)
-                obstacle_end_y = self.y + obstacle_length * math.sin(angle)
+                # Wall detection
+                wall_dist = self.sensor_readings[base_idx] * SENSOR_RANGE
+                crater_dist = self.sensor_readings[base_idx + 1] * SENSOR_RANGE
+                mating_dist = self.sensor_readings[base_idx + 2] * SENSOR_RANGE
+                crater_energy = self.sensor_readings[base_idx + 3]  # Normalized 0-1
+                food_dist = self.sensor_readings[base_idx + 4] * SENSOR_RANGE
                 
-                # Change color based on detection (from red when close to green when far)
-                detection_ratio = obstacle_length / SENSOR_RANGE
-                red = int(255 * (1 - detection_ratio))
-                green = int(255 * detection_ratio)
-                obstacle_color = (red, green, 0)
+                # Calculate sensor endpoints
+                end_x = self.x + SENSOR_RANGE * math.cos(angle)
+                end_y = self.y + SENSOR_RANGE * math.sin(angle)
                 
-                # Draw the obstacle ray
-                pygame.draw.line(surface, obstacle_color, (self.x, self.y), 
-                               (obstacle_end_x, obstacle_end_y), 2)
+                # Draw a thin background line for the full sensor range
+                pygame.draw.line(surface, (50, 50, 50), (self.x, self.y), (end_x, end_y), 1)
                 
-                # Draw food sensor (only if it's closer than obstacles)
-                if food_dist < obstacle_length:
-                    food_end_x = self.x + food_dist * math.cos(angle)
-                    food_end_y = self.y + food_dist * math.sin(angle)
+                # Draw detected objects, starting with the farthest ones first
+                sensors_to_draw = [
+                    (wall_dist, WALL_SENSOR_COLOR),
+                    (crater_dist, CRATER_SENSOR_COLOR),
+                    (mating_dist, MATING_SENSOR_COLOR),
+                    (food_dist, FOOD_SENSOR_COLOR)
+                ]
+                
+                # Sort by distance (descending)
+                sensors_to_draw.sort(key=lambda x: x[0], reverse=True)
+                
+                # Draw sensors in order (farthest to closest)
+                for distance, color in sensors_to_draw:
+                    if distance < SENSOR_RANGE:
+                        detection_end_x = self.x + distance * math.cos(angle)
+                        detection_end_y = self.y + distance * math.sin(angle)
+                        
+                        # Make line thickness based on how close the object is
+                        thickness = max(1, int(3 * (1 - distance / SENSOR_RANGE)))
+                        
+                        # Draw the ray to the detected object
+                        pygame.draw.line(surface, color, (self.x, self.y), 
+                                      (detection_end_x, detection_end_y), thickness)
+                
+                # If a crater with energy is detected, draw a small circle showing energy level
+                if crater_dist < SENSOR_RANGE and crater_energy > 0:
+                    energy_pos_x = self.x + crater_dist * math.cos(angle)
+                    energy_pos_y = self.y + crater_dist * math.sin(angle)
                     
-                    # Blue color for food detection
-                    food_color = (0, 200, 255)  # Cyan-ish blue
+                    # Energy indicator color: green (high) to red (low)
+                    energy_r = int(255 * (1 - crater_energy))
+                    energy_g = int(255 * crater_energy)
+                    energy_color = (energy_r, energy_g, 0)
                     
-                    # Draw the food ray
-                    pygame.draw.line(surface, food_color, (self.x, self.y),
-                                  (food_end_x, food_end_y), 3) 
+                    # Size based on energy level
+                    energy_size = 2 + int(3 * crater_energy)
+                    
+                    # Draw energy indicator
+                    pygame.draw.circle(surface, energy_color, 
+                                    (int(energy_pos_x), int(energy_pos_y)), energy_size) 

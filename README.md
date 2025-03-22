@@ -14,6 +14,7 @@ python -m craters.main
 
 ## Controls
 - **S key**: Toggle sensor visualization (on by default)
+- **E key**: Manually trigger evolution
 - **ESC key**: Quit the simulation
 
 ## Features
@@ -26,6 +27,7 @@ python -m craters.main
   - Craters that run out of energy transform into orange food pellets
 - Natural mating-based evolution:
   - Craters automatically enter mating state (magenta color) when energy exceeds threshold
+  - Mating craters consume energy at twice the normal rate (indicated by "2x" and pulsing border)
   - When two mating craters meet, they produce offspring
   - Each parent loses half its energy during reproduction
   - Offspring inherit neural networks from both parents with some mutations
@@ -39,10 +41,15 @@ python -m craters.main
   - Brightness still affected by energy level
 - Visual enhancements:
   - Cyan dot indicating direction of movement
-  - Color-changing sensors (red when detecting close objects, green when clear)
+  - Multi-colored sensors showing what is being detected:
+    - Red rays - Wall detection
+    - Yellow rays - Crater detection
+    - Magenta rays - Mating crater detection
+    - Green rays - Food detection
+    - Colored dots - Energy level of detected craters
   - Green food pellets appear randomly on the screen
   - Orange food pellets come from dead craters
-  - Magenta color indicates craters in mating state
+  - Magenta pulsing border indicates craters in mating state
 - Each crater has 8 sensors detecting:
   - Distance to walls in different directions
   - Distance to other craters in different directions
