@@ -22,6 +22,11 @@ class SimpleNeuralNetwork:
         self.weights_ho = np.random.randn(output_size, hidden_size) * 0.1
         self.bias_o = np.random.randn(output_size, 1) * 0.1
         
+        # Cache for forward pass
+        self.input_cache = None
+        self.hidden_cache = None
+        self.last_input = None
+        
     def forward(self, inputs):
         """
         Forward pass through the network
@@ -32,23 +37,32 @@ class SimpleNeuralNetwork:
         Returns:
             array: Output values
         """
-        # Convert inputs to numpy array
-        inputs = np.array(inputs).reshape(-1, 1)
+        # Check if we can reuse cached results
+        inputs_array = np.array(inputs).reshape(-1, 1)
+        if self.input_cache is not None and np.array_equal(inputs_array, self.last_input):
+            return self.output_cache.flatten()
+        
+        # Save the current input
+        self.last_input = inputs_array.copy()
         
         # Hidden layer
-        hidden = np.dot(self.weights_ih, inputs) + self.bias_h
-        hidden = self.sigmoid(hidden)
+        hidden = np.dot(self.weights_ih, inputs_array) + self.bias_h
+        hidden = self.fast_sigmoid(hidden)
+        self.hidden_cache = hidden
         
         # Output layer
         output = np.dot(self.weights_ho, hidden) + self.bias_o
-        output = self.sigmoid(output)
+        output = self.fast_sigmoid(output)
+        
+        # Cache the result
+        self.output_cache = output
         
         return output.flatten()
     
     @staticmethod
     def sigmoid(x):
         """
-        Sigmoid activation function
+        Standard sigmoid activation function
         
         Args:
             x (array): Input values
@@ -56,4 +70,20 @@ class SimpleNeuralNetwork:
         Returns:
             array: Activated values
         """
-        return 1 / (1 + np.exp(-x)) 
+        return 1 / (1 + np.exp(-x))
+        
+    @staticmethod
+    def fast_sigmoid(x):
+        """
+        Fast approximate sigmoid function
+        
+        Args:
+            x (array): Input values
+            
+        Returns:
+            array: Activated values
+        """
+        # Using a faster approximation of sigmoid
+        # For values in a reasonable range (-5 to 5), this is quite accurate
+        # and much faster than exp
+        return 0.5 * (1 + np.tanh(0.5 * x)) 

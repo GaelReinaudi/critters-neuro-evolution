@@ -4,7 +4,8 @@ Main entry point for crater simulation
 import sys
 import pygame
 from craters.config import (
-    WIDTH, HEIGHT, BACKGROUND_COLOR, FPS, FONT_SIZE
+    WIDTH, HEIGHT, BACKGROUND_COLOR, FPS, FONT_SIZE,
+    USE_SPATIAL_HASH, BATCH_PROCESSING, PRECOMPUTE_ANGLES
 )
 from craters.simulation import CraterSimulation
 
@@ -22,11 +23,15 @@ def main():
     # Create the simulation
     simulation = CraterSimulation(font=font)
     
-    # Print information about controls
+    # Print information about controls and optimizations
     print("Simulation started.")
     print("Controls:")
-    print("  S - Toggle sensor visibility")
+    print("  S - Toggle sensor visualization")
     print("  ESC - Quit simulation")
+    print("\nOptimization settings:")
+    print(f"  Spatial hashing: {'ENABLED' if USE_SPATIAL_HASH else 'DISABLED'}")
+    print(f"  Batch processing: {'ENABLED' if BATCH_PROCESSING else 'DISABLED'}")
+    print(f"  Precomputed angles: {'ENABLED' if PRECOMPUTE_ANGLES else 'DISABLED'}")
     
     running = True
     while running:

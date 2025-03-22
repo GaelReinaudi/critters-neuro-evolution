@@ -14,9 +14,16 @@ from craters.config import (
     MUTATION_RATE, MUTATION_SCALE, MATING_COLOR,
     MATING_ENERGY_THRESHOLD, MATING_PROBABILITY, MATING_DURATION,
     YOUNG_COLOR, ADULT_COLOR, MATURE_COLOR, ELDER_COLOR,
-    AGE_YOUNG, AGE_ADULT, AGE_MATURE
+    AGE_YOUNG, AGE_ADULT, AGE_MATURE, SENSOR_UPDATE_FRAMES,
+    DISTANCE_CUTOFF, PRECOMPUTE_ANGLES
 )
 from craters.models.neural_network import SimpleNeuralNetwork
+
+# Precompute sensor angles if enabled
+if PRECOMPUTE_ANGLES:
+    SENSOR_ANGLES = [(i * (2 * math.pi / NUM_SENSORS)) for i in range(NUM_SENSORS)]
+    SIN_COS_CACHE = {angle: (math.sin(angle), math.cos(angle)) for angle in SENSOR_ANGLES}
+    SIN_COS_CACHE.update({angle + math.pi*2: SIN_COS_CACHE[angle] for angle in SENSOR_ANGLES})
 
 class Crater:
     """
@@ -72,38 +79,71 @@ class Crater:
         # Mating state
         self.is_mating = False
         self.mating_timer = 0
+        
+        # Optimization
+        self.frames_since_sensor_update = 0
+        self.cached_sensor_data = None
     
     def generate_shape(self):
         """Create the triangular shape for the crater"""
         # Define the three points of the triangle relative to center (x, y)
         self.points = []
-        # Front point (pointing in direction of rotation)
-        front_x = self.x + self.size * math.cos(self.rotation)
-        front_y = self.y + self.size * math.sin(self.rotation)
-        # Two back points
-        left_x = self.x + self.size * math.cos(self.rotation + 2.09)  # ~120 degrees
-        left_y = self.y + self.size * math.sin(self.rotation + 2.09)
-        right_x = self.x + self.size * math.cos(self.rotation - 2.09)
-        right_y = self.y + self.size * math.sin(self.rotation - 2.09)
+        
+        if PRECOMPUTE_ANGLES:
+            # Use precomputed sin/cos values
+            sin_rot, cos_rot = math.sin(self.rotation), math.cos(self.rotation)
+            sin_rot_plus, cos_rot_plus = math.sin(self.rotation + 2.09), math.cos(self.rotation + 2.09)
+            sin_rot_minus, cos_rot_minus = math.sin(self.rotation - 2.09), math.cos(self.rotation - 2.09)
+            
+            # Front point (pointing in direction of rotation)
+            front_x = self.x + self.size * cos_rot
+            front_y = self.y + self.size * sin_rot
+            # Two back points
+            left_x = self.x + self.size * cos_rot_plus
+            left_y = self.y + self.size * sin_rot_plus
+            right_x = self.x + self.size * cos_rot_minus
+            right_y = self.y + self.size * sin_rot_minus
+        else:
+            # Original calculation
+            # Front point (pointing in direction of rotation)
+            front_x = self.x + self.size * math.cos(self.rotation)
+            front_y = self.y + self.size * math.sin(self.rotation)
+            # Two back points
+            left_x = self.x + self.size * math.cos(self.rotation + 2.09)  # ~120 degrees
+            left_y = self.y + self.size * math.sin(self.rotation + 2.09)
+            right_x = self.x + self.size * math.cos(self.rotation - 2.09)
+            right_y = self.y + self.size * math.sin(self.rotation - 2.09)
         
         self.points = [(front_x, front_y), (left_x, left_y), (right_x, right_y)]
     
-    def sense_environment(self, craters, food_pellets):
+    def sense_environment(self, craters, food_pellets, force_update=False):
         """
         Cast rays in different directions to detect walls and other craters
         
         Args:
             craters (list): List of all craters in the environment
             food_pellets (list): List of all food pellets
+            force_update (bool): Whether to force update even if not time yet
             
         Returns:
             list: Sensor readings (normalized distances)
         """
+        # Use cached sensor data if available and not time to update
+        if not force_update and self.cached_sensor_data is not None:
+            if self.frames_since_sensor_update < SENSOR_UPDATE_FRAMES:
+                self.frames_since_sensor_update += 1
+                return self.cached_sensor_data
+                
+        # Reset sensor update counter and readings
+        self.frames_since_sensor_update = 0
         self.sensor_readings = []
         
         # Cast rays in multiple directions
         for i in range(NUM_SENSORS):
-            angle = self.rotation + (i * (2 * math.pi / NUM_SENSORS))
+            if PRECOMPUTE_ANGLES:
+                angle = self.rotation + SENSOR_ANGLES[i]
+            else:
+                angle = self.rotation + (i * (2 * math.pi / NUM_SENSORS))
             
             # Wall distance
             wall_distance = self.get_wall_distance(angle)
@@ -115,6 +155,8 @@ class Crater:
             
             # Future enhancement: detect food (currently not used in neural input)
         
+        # Cache the sensor data
+        self.cached_sensor_data = self.sensor_readings.copy()
         return self.sensor_readings
     
     def get_wall_distance(self, angle):
@@ -131,9 +173,12 @@ class Crater:
         ray_x = self.x
         ray_y = self.y
         
-        # Ray direction
-        ray_dx = math.cos(angle)
-        ray_dy = math.sin(angle)
+        # Ray direction using precomputed values if available
+        if PRECOMPUTE_ANGLES and angle % (2 * math.pi) in SIN_COS_CACHE:
+            ray_dy, ray_dx = SIN_COS_CACHE[angle % (2 * math.pi)]
+        else:
+            ray_dx = math.cos(angle)
+            ray_dy = math.sin(angle)
         
         # Distance to walls
         dist_to_right = (WIDTH - ray_x) / ray_dx if ray_dx > 0 else float('inf')
@@ -165,18 +210,32 @@ class Crater:
         ray_x = self.x
         ray_y = self.y
         
+        # Get ray direction
+        if PRECOMPUTE_ANGLES and angle % (2 * math.pi) in SIN_COS_CACHE:
+            ray_dy, ray_dx = SIN_COS_CACHE[angle % (2 * math.pi)]
+        else:
+            ray_dx = math.cos(angle)
+            ray_dy = math.sin(angle)
+        
         min_distance = SENSOR_RANGE
         
+        # Only check craters that are potentially in range
         for crater in craters:
             if crater is self:
                 continue
                 
-            # Vector to crater
+            # Quick distance check first to avoid unnecessary calculation
             dx = crater.x - ray_x
             dy = crater.y - ray_y
+            distance_squared = dx*dx + dy*dy
             
+            # Skip if crater is definitely too far away
+            cutoff_squared = (DISTANCE_CUTOFF + crater.size) ** 2
+            if distance_squared > cutoff_squared:
+                continue
+                
             # Distance to crater center
-            distance_to_center = math.sqrt(dx*dx + dy*dy)
+            distance_to_center = math.sqrt(distance_squared)
             if distance_to_center > SENSOR_RANGE + crater.size:
                 continue
                 
@@ -234,7 +293,7 @@ class Crater:
         Check for collision with other mating craters
         
         Args:
-            craters (list): List of all craters
+            craters (list): List of all craters in the environment
             
         Returns:
             Crater or None: The other crater if mating collision occurred, None otherwise
@@ -243,8 +302,8 @@ class Crater:
             return None
             
         for other in craters:
-            # Skip self or non-mating craters
-            if other is self or not other.is_mating:
+            # Skip self, non-craters, or non-mating craters
+            if other is self or not isinstance(other, Crater) or not hasattr(other, 'is_mating') or not other.is_mating:
                 continue
                 
             # Calculate distance

@@ -51,6 +51,15 @@ MATING_DURATION = 300  # How long a crater stays in mating state (in frames)
 MUTATION_RATE = 0.1  # Probability of mutation for each weight
 MUTATION_SCALE = 0.2  # Scale of mutations
 
+# Optimization settings
+USE_SPATIAL_HASH = True           # Use spatial partitioning for faster collision detection
+SENSOR_UPDATE_FRAMES = 3          # Update sensors every N frames
+DISTANCE_CUTOFF = 150             # Ignore interactions beyond this distance
+BATCH_PROCESSING = True           # Process entities in batches
+USE_NUMBA = False                 # Use Numba JIT compilation if available
+PRECOMPUTE_ANGLES = True          # Precompute trigonometric functions
+SKIP_FRAMES_WHEN_LAGGING = True   # Skip frames if FPS drops too low
+
 # Display settings
 FONT_SIZE = 12  # Size for energy display
 FPS = 60  # Frames per second 
