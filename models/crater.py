@@ -502,8 +502,11 @@ class Crater:
             if random.random() < mutation_rate:
                 child_brain.bias_o[i, 0] += random.gauss(0, 1) * mutation_scale
         
-        # Create a new crater with the combined brain
-        return cls(brain=child_brain, font=parent1.font)
+        # Use position of one of the parents (randomly choose which one)
+        parent_pos = parent1 if random.random() < 0.5 else parent2
+        
+        # Create a new crater with the combined brain at parent's position
+        return cls(x=parent_pos.x, y=parent_pos.y, brain=child_brain, font=parent1.font)
     
     def get_age_color(self):
         """
