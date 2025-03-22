@@ -68,6 +68,7 @@ class CraterSimulation:
         """Get craters near the given crater efficiently"""
         if USE_SPATIAL_HASH:
             nearby = self.spatial_hash.get_nearby_entities(crater, DISTANCE_CUTOFF)
+            # Ensure we only return Crater instances and not the crater itself
             return [c for c in nearby if isinstance(c, Crater) and c is not crater]
         else:
             # Traditional O(n) approach

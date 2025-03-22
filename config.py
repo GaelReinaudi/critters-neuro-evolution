@@ -12,7 +12,7 @@ DIRECTION_COLOR = (0, 255, 255)  # Cyan for direction indicator
 FOOD_COLOR = (0, 255, 0)  # Green for food pellets
 ORANGE_FOOD_COLOR = (255, 165, 0)  # Orange for food from dead craters
 TEXT_COLOR = (255, 255, 255)  # White for general text
-ENERGY_TEXT_COLOR = (255, 0, 0)  # Red for energy display
+ENERGY_TEXT_COLOR = (0, 0, 0)  # Red for energy display
 MATING_COLOR = (255, 0, 255)  # Magenta for mating state
 
 # Age color thresholds
@@ -29,12 +29,12 @@ NUM_CRATERS = 200
 NUM_SENSORS = 8  # Number of sensor rays
 SENSOR_RANGE = 100  # How far sensors can detect
 NUM_FOOD_PELLETS = 1000  # Number of food pellets
-FOOD_SPAWN_INTERVAL = 60  # Frames between food spawning attempts
+FOOD_SPAWN_INTERVAL = 30  # Frames between food spawning attempts
 
 # Energy settings
 FOOD_ENERGY = 200  # Energy gained from food (increased)
 MAX_ENERGY = 1000  # Maximum energy a crater can have
-INITIAL_ENERGY = 300  # Starting energy for craters (increased)
+INITIAL_ENERGY = 100  # Starting energy for craters (increased)
 ENERGY_DEPLETION_RATE = 0.15  # Energy lost per unit of movement (decreased)
 ENERGY_ROTATION_COST = 0.05  # Energy lost per unit of rotation (decreased)
 
@@ -61,5 +61,5 @@ PRECOMPUTE_ANGLES = True          # Precompute trigonometric functions
 SKIP_FRAMES_WHEN_LAGGING = True   # Skip frames if FPS drops too low
 
 # Display settings
-FONT_SIZE = 12  # Size for energy display
+FONT_SIZE = 24  # Size for energy display
 FPS = 60  # Frames per second 
