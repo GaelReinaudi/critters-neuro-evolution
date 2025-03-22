@@ -30,6 +30,13 @@ python -m craters.main
   - Each parent loses half its energy during reproduction
   - Offspring inherit neural networks from both parents with some mutations
   - Population gradually evolves more effective behaviors over time
+- Age-based coloring:
+  - Young craters (blue): First stage of life
+  - Adult craters (green): Second stage of life
+  - Mature craters (yellow): Third stage of life 
+  - Elder craters (red): Final stage of life
+  - Colors transition smoothly between stages
+  - Brightness still affected by energy level
 - Visual enhancements:
   - Cyan dot indicating direction of movement
   - Color-changing sensors (red when detecting close objects, green when clear)
@@ -53,6 +60,8 @@ Each crater uses ray-casting to detect nearby objects and feeds this data to a n
 
 When a crater's energy exceeds a threshold, it automatically enters a mating state (turning magenta). If two craters in mating state collide, they produce offspring with neural networks that combine features from both parents with some random mutations. This natural selection process favors craters with strategies that effectively find food and manage energy. Over generations, the population evolves more sophisticated behaviors without any external intervention.
 
+As craters age, their color changes to reflect their life stage, progressing from blue (young) to green (adult) to yellow (mature) to red (elder). This visual cue allows you to identify which craters have survived the longest and are potentially carrying the most successful genetic information.
+
 ## Code Structure
 The project follows a modular architecture:
 - `config.py` - Central configuration parameters
@@ -71,4 +80,5 @@ Edit `config.py` to modify:
 - Sensor range and sensitivity
 - Movement parameters (speed, acceleration, friction)
 - Mating parameters (energy threshold, duration)
+- Age thresholds and colors
 - Mutation rate and scale

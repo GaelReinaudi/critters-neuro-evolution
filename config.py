@@ -15,11 +15,20 @@ TEXT_COLOR = (255, 255, 255)  # White for general text
 ENERGY_TEXT_COLOR = (255, 0, 0)  # Red for energy display
 MATING_COLOR = (255, 0, 255)  # Magenta for mating state
 
+# Age color thresholds
+YOUNG_COLOR = (100, 100, 255)  # Blue for young craters
+ADULT_COLOR = (100, 255, 100)  # Green for adult craters
+MATURE_COLOR = (255, 255, 100)  # Yellow for mature craters
+ELDER_COLOR = (255, 100, 100)  # Red for elder craters
+AGE_YOUNG = 500      # Frames until considered adult
+AGE_ADULT = 2000     # Frames until considered mature
+AGE_MATURE = 5000    # Frames until considered elder
+
 # Simulation parameters
 NUM_CRATERS = 200
 NUM_SENSORS = 8  # Number of sensor rays
 SENSOR_RANGE = 100  # How far sensors can detect
-NUM_FOOD_PELLETS = 200  # Number of food pellets
+NUM_FOOD_PELLETS = 1000  # Number of food pellets
 FOOD_SPAWN_INTERVAL = 60  # Frames between food spawning attempts
 
 # Energy settings
@@ -35,7 +44,7 @@ ACCELERATION_FACTOR = 0.25  # Acceleration multiplier (increased)
 FRICTION = 0.98  # Friction coefficient (reduced friction)
 
 # Mating parameters
-MATING_ENERGY_THRESHOLD = 600  # Energy required to enter mating state
+MATING_ENERGY_THRESHOLD = 400  # Energy required to enter mating state
 MATING_RADIUS = 40  # Distance for detecting other mating craters
 MATING_PROBABILITY = 0.005  # Chance per frame to enter mating state when above threshold
 MATING_DURATION = 300  # How long a crater stays in mating state (in frames)

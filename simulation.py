@@ -5,7 +5,8 @@ import random
 import pygame
 from craters.config import (
     NUM_CRATERS, NUM_FOOD_PELLETS, TEXT_COLOR,
-    FOOD_SPAWN_INTERVAL, ORANGE_FOOD_COLOR
+    FOOD_SPAWN_INTERVAL, ORANGE_FOOD_COLOR,
+    AGE_YOUNG, AGE_ADULT, AGE_MATURE
 )
 from craters.models.crater import Crater
 from craters.models.food import Food
@@ -128,6 +129,16 @@ class CraterSimulation:
             active_craters = len(self.craters)
             mating_craters = sum(1 for crater in self.craters if crater.is_mating)
             
+            # Calculate age statistics
+            total_age = sum(crater.age for crater in self.craters) if self.craters else 0
+            avg_age = total_age / len(self.craters) if self.craters else 0
+            max_age = max((crater.age for crater in self.craters), default=0)
+            
+            young_craters = sum(1 for crater in self.craters if crater.age < AGE_YOUNG)
+            adult_craters = sum(1 for crater in self.craters if AGE_YOUNG <= crater.age < AGE_ADULT)
+            mature_craters = sum(1 for crater in self.craters if AGE_ADULT <= crater.age < AGE_MATURE)
+            elder_craters = sum(1 for crater in self.craters if crater.age >= AGE_MATURE)
+            
             # Basic info
             info_text = f"Food: {active_food} | Craters: {active_craters}"
             text_surface = self.font.render(info_text, True, TEXT_COLOR)
@@ -137,6 +148,11 @@ class CraterSimulation:
             mating_info = f"Mating Craters: {mating_craters} | Mating Events: {self.mating_events} | Births: {self.births}"
             mating_surface = self.font.render(mating_info, True, TEXT_COLOR)
             surface.blit(mating_surface, (10, 30))
+            
+            # Age info
+            age_info = f"Avg Age: {int(avg_age)} | Max Age: {max_age} | Y: {young_craters} | A: {adult_craters} | M: {mature_craters} | E: {elder_craters}"
+            age_surface = self.font.render(age_info, True, TEXT_COLOR)
+            surface.blit(age_surface, (10, 50))
     
     def toggle_sensors(self):
         """Toggle the visibility of sensor rays"""

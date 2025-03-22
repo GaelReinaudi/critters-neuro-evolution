@@ -12,7 +12,9 @@ from craters.config import (
     MAX_ENERGY, ENERGY_DEPLETION_RATE, ENERGY_ROTATION_COST,
     FONT_SIZE, MAX_SPEED, ACCELERATION_FACTOR, FRICTION,
     MUTATION_RATE, MUTATION_SCALE, MATING_COLOR,
-    MATING_ENERGY_THRESHOLD, MATING_PROBABILITY, MATING_DURATION
+    MATING_ENERGY_THRESHOLD, MATING_PROBABILITY, MATING_DURATION,
+    YOUNG_COLOR, ADULT_COLOR, MATURE_COLOR, ELDER_COLOR,
+    AGE_YOUNG, AGE_ADULT, AGE_MATURE
 )
 from craters.models.neural_network import SimpleNeuralNetwork
 
@@ -444,6 +446,41 @@ class Crater:
         # Create a new crater with the combined brain
         return cls(brain=child_brain, font=parent1.font)
     
+    def get_age_color(self):
+        """
+        Get color based on crater age
+        
+        Returns:
+            tuple: RGB color tuple
+        """
+        if self.age < AGE_YOUNG:
+            # Young crater: transition from young to adult (blue to green)
+            ratio = self.age / AGE_YOUNG
+            r = int(YOUNG_COLOR[0] + (ADULT_COLOR[0] - YOUNG_COLOR[0]) * ratio)
+            g = int(YOUNG_COLOR[1] + (ADULT_COLOR[1] - YOUNG_COLOR[1]) * ratio)
+            b = int(YOUNG_COLOR[2] + (ADULT_COLOR[2] - YOUNG_COLOR[2]) * ratio)
+            return (r, g, b)
+        
+        elif self.age < AGE_ADULT:
+            # Adult crater: transition from adult to mature (green to yellow)
+            ratio = (self.age - AGE_YOUNG) / (AGE_ADULT - AGE_YOUNG)
+            r = int(ADULT_COLOR[0] + (MATURE_COLOR[0] - ADULT_COLOR[0]) * ratio)
+            g = int(ADULT_COLOR[1] + (MATURE_COLOR[1] - ADULT_COLOR[1]) * ratio)
+            b = int(ADULT_COLOR[2] + (MATURE_COLOR[2] - ADULT_COLOR[2]) * ratio)
+            return (r, g, b)
+        
+        elif self.age < AGE_MATURE:
+            # Mature crater: transition from mature to elder (yellow to red)
+            ratio = (self.age - AGE_ADULT) / (AGE_MATURE - AGE_ADULT)
+            r = int(MATURE_COLOR[0] + (ELDER_COLOR[0] - MATURE_COLOR[0]) * ratio)
+            g = int(MATURE_COLOR[1] + (ELDER_COLOR[1] - MATURE_COLOR[1]) * ratio)
+            b = int(MATURE_COLOR[2] + (ELDER_COLOR[2] - MATURE_COLOR[2]) * ratio)
+            return (r, g, b)
+        
+        else:
+            # Elder crater: red
+            return ELDER_COLOR
+
     def draw(self, surface, draw_sensors=False):
         """
         Draw the crater and optionally its sensors
@@ -452,15 +489,21 @@ class Crater:
             surface: Pygame surface to draw on
             draw_sensors (bool): Whether to draw sensor rays
         """
-        # Crater color based on energy and mating state
+        # Crater color based on mating state or age
         if self.is_mating:
             # Magenta color for mating state
             crater_color = MATING_COLOR
         else:
-            # Normal color based on energy (from gray to white as energy increases)
+            # Color based on age
+            crater_color = self.get_age_color()
+            
+            # Adjust brightness based on energy
             energy_ratio = self.energy / self.max_energy
-            color_value = min(255, int(150 + 105 * energy_ratio))
-            crater_color = (color_value, color_value, color_value)
+            brightness_factor = 0.5 + 0.5 * energy_ratio  # 50%-100% brightness
+            r = min(255, int(crater_color[0] * brightness_factor))
+            g = min(255, int(crater_color[1] * brightness_factor))
+            b = min(255, int(crater_color[2] * brightness_factor))
+            crater_color = (r, g, b)
         
         # Draw crater triangle
         pygame.draw.polygon(surface, crater_color, self.points)
