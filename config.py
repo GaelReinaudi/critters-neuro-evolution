@@ -28,13 +28,13 @@ AGE_MATURE = 5000    # Frames until considered elder
 NUM_CRATERS = 200
 NUM_SENSORS = 8  # Number of sensor rays
 SENSOR_RANGE = 100  # How far sensors can detect
-NUM_FOOD_PELLETS = 1000  # Number of food pellets
-FOOD_SPAWN_INTERVAL = 30  # Frames between food spawning attempts
+NUM_FOOD_PELLETS = 200  # Number of food pellets
+FOOD_SPAWN_INTERVAL = 3  # Frames between food spawning attempts
 
 # Energy settings
 FOOD_ENERGY = 200  # Energy gained from food (increased)
 MAX_ENERGY = 1000  # Maximum energy a crater can have
-INITIAL_ENERGY = 100  # Starting energy for craters (increased)
+INITIAL_ENERGY = 20  # Starting energy for craters (increased)
 ENERGY_DEPLETION_RATE = 0.15  # Energy lost per unit of movement (decreased)
 ENERGY_ROTATION_COST = 0.05  # Energy lost per unit of rotation (decreased)
 
@@ -51,6 +51,11 @@ MATING_DURATION = 300  # How long a crater stays in mating state (in frames)
 MUTATION_RATE = 0.1  # Probability of mutation for each weight
 MUTATION_SCALE = 0.2  # Scale of mutations
 
+# Neural network settings
+USE_DEEP_NETWORK = True  # Use the advanced multi-layer network instead of simple one
+NETWORK_HIDDEN_LAYERS = [24, 16, 8]  # Sizes of hidden layers for deep network
+NETWORK_ACTIVATION = 'relu'  # Activation function: 'relu', 'leaky_relu', 'tanh', or 'sigmoid'
+
 # Optimization settings
 USE_SPATIAL_HASH = True           # Use spatial partitioning for faster collision detection
 SENSOR_UPDATE_FRAMES = 3          # Update sensors every N frames
@@ -61,5 +66,5 @@ PRECOMPUTE_ANGLES = True          # Precompute trigonometric functions
 SKIP_FRAMES_WHEN_LAGGING = True   # Skip frames if FPS drops too low
 
 # Display settings
-FONT_SIZE = 24  # Size for energy display
+FONT_SIZE = 18  # Size for energy display
 FPS = 60  # Frames per second 
