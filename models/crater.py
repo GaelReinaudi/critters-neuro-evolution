@@ -31,21 +31,21 @@ class Crater:
     """
     Represents a crater entity with neural network-based behavior
     """
-    def __init__(self, x=None, y=None, size=None, font=None, brain=None):
+    def __init__(self, x=None, y=None, size=20, font=None, brain=None):
         """
         Initialize crater with random or specified attributes
         
         Args:
             x (float, optional): X coordinate. If None, a random position is used.
             y (float, optional): Y coordinate. If None, a random position is used.
-            size (int, optional): Crater size. If None, a random size is used.
+            size (int, optional): Crater size. Default is 20 for all craters.
             font: Pygame font for energy display
             brain: Neural network to use. If None, a new one is created.
         """
         # Initialize crater with random values if not provided
         self.x = x if x is not None else random.randint(50, WIDTH-50)
         self.y = y if y is not None else random.randint(50, HEIGHT-50)
-        self.size = size if size is not None else random.randint(10, 30)
+        self.size = size  # Fixed size for all craters
         self.rotation = random.uniform(0, 2 * math.pi)
         self.font = font
         
@@ -378,8 +378,9 @@ class Crater:
             if angle_diff > math.pi:
                 angle_diff -= 2 * math.pi
                 
-            # If not in ray direction (within a wider cone for early rejection), skip
-            if abs(angle_diff) > 1.0:  # About 60 degrees
+            # Use a wider angle for food detection (90 degrees instead of 60)
+            # This makes food easier to detect from more angles
+            if abs(angle_diff) > 1.57:  # About 90 degrees (π/2)
                 continue
                 
             # Distance to food center
@@ -387,9 +388,9 @@ class Crater:
             if distance_to_center > SENSOR_RANGE + food.size:
                 continue
             
-            # More precise angle check now that we know it's worth checking
-            # If not in ray direction (within a small cone), skip
-            if abs(angle_diff) > 0.5:  # About 30 degrees
+            # Less strict angle check for food detection
+            # Wider detection angle makes food easier to find
+            if abs(angle_diff) > 0.8:  # About 45 degrees
                 continue
                 
             # Project distance
@@ -807,7 +808,8 @@ class Crater:
                 return
                 
             # Define colors for different sensor types
-            WALL_SENSOR_COLOR = (255, 0, 0)       # Red for walls
+            WALL_DISTANT_COLOR = (60, 30, 30)    # Very dim red for walls out of effective range
+            WALL_CLOSE_COLOR = (255, 0, 0)       # Bright red for walls in effective range
             CRATER_SENSOR_COLOR = (255, 255, 0)   # Yellow for craters
             MATING_SENSOR_COLOR = (255, 0, 255)   # Magenta for mating craters
             FOOD_SENSOR_COLOR = (0, 255, 0)       # Green for food
@@ -821,7 +823,7 @@ class Crater:
                 # Index in sensor_readings array
                 base_idx = i * 5
                 
-                # Wall detection
+                # Get all sensor readings
                 wall_dist = self.sensor_readings[base_idx] * SENSOR_RANGE
                 crater_dist = self.sensor_readings[base_idx + 1] * SENSOR_RANGE
                 mating_dist = self.sensor_readings[base_idx + 2] * SENSOR_RANGE
@@ -838,27 +840,37 @@ class Crater:
                 # Draw detected objects, starting with the farthest ones first
                 sensors_to_draw = []
                 
-                # Only add sensors that detected something
+                # Wall detection - always show but with different colors based on distance
                 if wall_dist < SENSOR_RANGE:
-                    sensors_to_draw.append((wall_dist, WALL_SENSOR_COLOR))
-                if crater_dist < SENSOR_RANGE:
-                    sensors_to_draw.append((crater_dist, CRATER_SENSOR_COLOR))
-                if mating_dist < SENSOR_RANGE:
-                    sensors_to_draw.append((mating_dist, MATING_SENSOR_COLOR))
+                    # Check if wall is within effective detection range
+                    if wall_dist < WALL_DETECTION_RANGE:
+                        # Wall is close enough to be detected and affect behavior
+                        sensors_to_draw.append((wall_dist, WALL_CLOSE_COLOR, 2))
+                    else:
+                        # Wall is visible but too far to affect behavior
+                        sensors_to_draw.append((wall_dist, WALL_DISTANT_COLOR, 1))
+                
+                # Add other sensor types
                 if food_dist < SENSOR_RANGE:
-                    sensors_to_draw.append((food_dist, FOOD_SENSOR_COLOR))
+                    sensors_to_draw.append((food_dist, FOOD_SENSOR_COLOR, 3))  # Food (thickest)
+                if mating_dist < SENSOR_RANGE:
+                    sensors_to_draw.append((mating_dist, MATING_SENSOR_COLOR, 2))  # Mating
+                if crater_dist < SENSOR_RANGE:
+                    sensors_to_draw.append((crater_dist, CRATER_SENSOR_COLOR, 2))  # Craters
                 
                 # Sort by distance (descending) and only draw if something was detected
                 if sensors_to_draw:
                     sensors_to_draw.sort(key=lambda x: x[0], reverse=True)
                     
                     # Draw sensors in order (farthest to closest)
-                    for distance, color in sensors_to_draw:
+                    for distance, color, thickness in sensors_to_draw:
                         detection_end_x = self.x + distance * math.cos(angle)
                         detection_end_y = self.y + distance * math.sin(angle)
                         
-                        # Make line thickness based on how close the object is
-                        thickness = max(1, int(3 * (1 - distance / SENSOR_RANGE)))
+                        # Make line thickness based on how close the object is and its type
+                        if thickness > 1:
+                            # For non-wall sensors, scale thickness by distance
+                            thickness = max(thickness, int(4 * (1 - distance / SENSOR_RANGE)))
                         
                         # Draw the ray to the detected object
                         pygame.draw.line(surface, color, (self.x, self.y), 
