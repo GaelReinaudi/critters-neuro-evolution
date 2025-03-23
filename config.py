@@ -15,14 +15,22 @@ TEXT_COLOR = (255, 255, 255)  # White for general text
 ENERGY_TEXT_COLOR = (0, 0, 0)  # Red for energy display
 MATING_COLOR = (255, 0, 255)  # Magenta for mating state
 
-# Age color thresholds
-YOUNG_COLOR = (100, 100, 255)  # Blue for young craters
-ADULT_COLOR = (100, 255, 100)  # Green for adult craters
-MATURE_COLOR = (255, 255, 100)  # Yellow for mature craters
-ELDER_COLOR = (255, 100, 100)  # Red for elder craters
-AGE_YOUNG = 500      # Frames until considered adult
-AGE_ADULT = 2000     # Frames until considered mature
-AGE_MATURE = 5000    # Frames until considered elder
+# Age-based colors
+YOUNG_COLOR = (50, 50, 255)    # Deep blue for youngest craters
+TEEN_COLOR = (50, 150, 255)    # Light blue for teen craters
+ADULT_COLOR = (50, 255, 150)   # Teal/green for adult craters
+MIDDLE_COLOR = (150, 255, 50)  # Lime green for middle-aged craters
+MATURE_COLOR = (255, 255, 50)  # Yellow for mature craters
+SENIOR_COLOR = (255, 150, 50)  # Orange for senior craters
+ELDER_COLOR = (255, 50, 50)    # Red for eldest craters
+
+# Age thresholds (in frames)
+AGE_TEEN = 1000      # Frames until considered teen
+AGE_YOUNG = 3000     # Frames until considered adult
+AGE_ADULT = 6000     # Frames until considered middle-aged
+AGE_MIDDLE = 10000   # Frames until considered mature
+AGE_MATURE = 15000   # Frames until considered senior
+AGE_SENIOR = 21000   # Frames until considered elder
 
 # Simulation parameters
 NUM_CRATERS = 200
@@ -30,12 +38,12 @@ NUM_SENSORS = 8  # Reduced number of sensors for better performance
 SENSOR_RANGE = 150  # Maximum detection range for sensors (increased)
 WALL_DETECTION_RANGE = 50  # Wall detection range
 NUM_FOOD_PELLETS = 500  # Number of food pellets
-FOOD_SPAWN_INTERVAL = 10  # Frames between food spawning attempts
+FOOD_SPAWN_INTERVAL = 30  # Frames between food spawning attempts
 
 # Energy settings
 FOOD_ENERGY = 200  # Energy gained from food (increased)
 MAX_ENERGY = 1000  # Maximum energy a crater can have
-INITIAL_ENERGY = 20  # Starting energy for craters (increased)
+INITIAL_ENERGY = 100  # Starting energy for craters (increased)
 ENERGY_DEPLETION_RATE = 0.15  # Energy lost per unit of movement (decreased)
 ENERGY_ROTATION_COST = 0.05  # Energy lost per unit of rotation (decreased)
 

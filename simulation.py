@@ -7,7 +7,7 @@ import pygame
 from craters.config import (
     NUM_CRATERS, NUM_FOOD_PELLETS, TEXT_COLOR,
     FOOD_SPAWN_INTERVAL, ORANGE_FOOD_COLOR,
-    AGE_YOUNG, AGE_ADULT, AGE_MATURE,
+    AGE_TEEN, AGE_YOUNG, AGE_ADULT, AGE_MIDDLE, AGE_MATURE, AGE_SENIOR,
     DISTANCE_CUTOFF, USE_SPATIAL_HASH,
     BATCH_PROCESSING, SKIP_FRAMES_WHEN_LAGGING,
     FPS, MATING_DURATION, CELL_SIZE,
@@ -274,10 +274,13 @@ class CraterSimulation:
             avg_age = total_age / len(self.craters) if self.craters else 0
             max_age = max((crater.age for crater in self.craters), default=0)
             
-            young_craters = sum(1 for crater in self.craters if crater.age < AGE_YOUNG)
+            teens = sum(1 for crater in self.craters if crater.age < AGE_TEEN)
+            young_craters = sum(1 for crater in self.craters if AGE_TEEN <= crater.age < AGE_YOUNG)
             adult_craters = sum(1 for crater in self.craters if AGE_YOUNG <= crater.age < AGE_ADULT)
-            mature_craters = sum(1 for crater in self.craters if AGE_ADULT <= crater.age < AGE_MATURE)
-            elder_craters = sum(1 for crater in self.craters if crater.age >= AGE_MATURE)
+            middle_craters = sum(1 for crater in self.craters if AGE_ADULT <= crater.age < AGE_MIDDLE)
+            mature_craters = sum(1 for crater in self.craters if AGE_MIDDLE <= crater.age < AGE_MATURE)
+            senior_craters = sum(1 for crater in self.craters if AGE_MATURE <= crater.age < AGE_SENIOR)
+            elder_craters = sum(1 for crater in self.craters if crater.age >= AGE_SENIOR)
             
             # Calculate generation depth statistics
             if self.craters:
@@ -308,7 +311,7 @@ class CraterSimulation:
             surface.blit(mating_surface, (10, 50))
             
             # Age info
-            age_info = f"Avg Age: {int(avg_age)} | Max Age: {max_age} | Y: {young_craters} | A: {adult_craters} | M: {mature_craters} | E: {elder_craters}"
+            age_info = f"Avg Age: {int(avg_age)} | Max Age: {max_age} | T: {teens} | Y: {young_craters} | A: {adult_craters} | M: {middle_craters} | Ma: {mature_craters} | S: {senior_craters} | E: {elder_craters}"
             age_surface = self.font.render(age_info, True, TEXT_COLOR)
             surface.blit(age_surface, (10, 70))
             

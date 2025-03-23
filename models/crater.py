@@ -18,7 +18,8 @@ from craters.config import (
     AGE_YOUNG, AGE_ADULT, AGE_MATURE, SENSOR_UPDATE_FRAMES,
     DISTANCE_CUTOFF, PRECOMPUTE_ANGLES, USE_DEEP_NETWORK,
     NETWORK_HIDDEN_LAYERS, NETWORK_ACTIVATION, FOOD_DETECTION_RANGE,
-    WALL_DETECTION_RANGE
+    WALL_DETECTION_RANGE, AGE_TEEN, TEEN_COLOR, MIDDLE_COLOR,
+    SENIOR_COLOR
 )
 from craters.models.neural_network import SimpleNeuralNetwork, DeepNeuralNetwork, PyGADNeuralNetwork
 
@@ -343,15 +344,15 @@ class Crater:
             
             # Fast age calculation
             age = nearest_crater.age
-            if age < AGE_YOUNG:
-                result['age_ratio'] = age / AGE_YOUNG * 0.333
+            if age < AGE_TEEN:
+                result['age_ratio'] = age / AGE_TEEN * 0.333
+            elif age < AGE_YOUNG:
+                result['age_ratio'] = 0.333 + ((age - AGE_TEEN) / 
+                                             (AGE_YOUNG - AGE_TEEN) * 0.333)
             elif age < AGE_ADULT:
-                result['age_ratio'] = 0.333 + ((age - AGE_YOUNG) / 
+                result['age_ratio'] = 0.666 + ((age - AGE_YOUNG) / 
                                              (AGE_ADULT - AGE_YOUNG) * 0.333)
-            elif age < AGE_MATURE:
-                result['age_ratio'] = 0.666 + ((age - AGE_ADULT) / 
-                                             (AGE_MATURE - AGE_ADULT) * 0.334)
-            else:
+            elif age < AGE_MIDDLE:
                 result['age_ratio'] = 1.0
         
         return result
@@ -704,28 +705,52 @@ class Crater:
         Returns:
             tuple: RGB color tuple
         """
-        if self.age < AGE_YOUNG:
-            # Young crater: transition from young to adult (blue to green)
-            ratio = self.age / AGE_YOUNG
-            r = int(YOUNG_COLOR[0] + (ADULT_COLOR[0] - YOUNG_COLOR[0]) * ratio)
-            g = int(YOUNG_COLOR[1] + (ADULT_COLOR[1] - YOUNG_COLOR[1]) * ratio)
-            b = int(YOUNG_COLOR[2] + (ADULT_COLOR[2] - YOUNG_COLOR[2]) * ratio)
+        if self.age < AGE_TEEN:
+            # Youngest crater: transition from young to teen (deep blue to light blue)
+            ratio = self.age / AGE_TEEN
+            r = int(YOUNG_COLOR[0] + (TEEN_COLOR[0] - YOUNG_COLOR[0]) * ratio)
+            g = int(YOUNG_COLOR[1] + (TEEN_COLOR[1] - YOUNG_COLOR[1]) * ratio)
+            b = int(YOUNG_COLOR[2] + (TEEN_COLOR[2] - YOUNG_COLOR[2]) * ratio)
+            return (r, g, b)
+        
+        elif self.age < AGE_YOUNG:
+            # Teen crater: transition from teen to young (light blue to deep blue)
+            ratio = (self.age - AGE_TEEN) / (AGE_YOUNG - AGE_TEEN)
+            r = int(TEEN_COLOR[0] + (ADULT_COLOR[0] - TEEN_COLOR[0]) * ratio)
+            g = int(TEEN_COLOR[1] + (ADULT_COLOR[1] - TEEN_COLOR[1]) * ratio)
+            b = int(TEEN_COLOR[2] + (ADULT_COLOR[2] - TEEN_COLOR[2]) * ratio)
             return (r, g, b)
         
         elif self.age < AGE_ADULT:
-            # Adult crater: transition from adult to mature (green to yellow)
+            # Young adult: transition from adult to middle (teal to lime green)
             ratio = (self.age - AGE_YOUNG) / (AGE_ADULT - AGE_YOUNG)
-            r = int(ADULT_COLOR[0] + (MATURE_COLOR[0] - ADULT_COLOR[0]) * ratio)
-            g = int(ADULT_COLOR[1] + (MATURE_COLOR[1] - ADULT_COLOR[1]) * ratio)
-            b = int(ADULT_COLOR[2] + (MATURE_COLOR[2] - ADULT_COLOR[2]) * ratio)
+            r = int(ADULT_COLOR[0] + (MIDDLE_COLOR[0] - ADULT_COLOR[0]) * ratio)
+            g = int(ADULT_COLOR[1] + (MIDDLE_COLOR[1] - ADULT_COLOR[1]) * ratio)
+            b = int(ADULT_COLOR[2] + (MIDDLE_COLOR[2] - ADULT_COLOR[2]) * ratio)
+            return (r, g, b)
+        
+        elif self.age < AGE_MIDDLE:
+            # Middle-aged: transition from middle to mature (lime green to yellow)
+            ratio = (self.age - AGE_ADULT) / (AGE_MIDDLE - AGE_ADULT)
+            r = int(MIDDLE_COLOR[0] + (MATURE_COLOR[0] - MIDDLE_COLOR[0]) * ratio)
+            g = int(MIDDLE_COLOR[1] + (MATURE_COLOR[1] - MIDDLE_COLOR[1]) * ratio)
+            b = int(MIDDLE_COLOR[2] + (MATURE_COLOR[2] - MIDDLE_COLOR[2]) * ratio)
             return (r, g, b)
         
         elif self.age < AGE_MATURE:
-            # Mature crater: transition from mature to elder (yellow to red)
-            ratio = (self.age - AGE_ADULT) / (AGE_MATURE - AGE_ADULT)
-            r = int(MATURE_COLOR[0] + (ELDER_COLOR[0] - MATURE_COLOR[0]) * ratio)
-            g = int(MATURE_COLOR[1] + (ELDER_COLOR[1] - MATURE_COLOR[1]) * ratio)
-            b = int(MATURE_COLOR[2] + (ELDER_COLOR[2] - MATURE_COLOR[2]) * ratio)
+            # Mature: transition from mature to senior (yellow to orange)
+            ratio = (self.age - AGE_MIDDLE) / (AGE_MATURE - AGE_MIDDLE)
+            r = int(MATURE_COLOR[0] + (SENIOR_COLOR[0] - MATURE_COLOR[0]) * ratio)
+            g = int(MATURE_COLOR[1] + (SENIOR_COLOR[1] - MATURE_COLOR[1]) * ratio)
+            b = int(MATURE_COLOR[2] + (SENIOR_COLOR[2] - MATURE_COLOR[2]) * ratio)
+            return (r, g, b)
+        
+        elif self.age < AGE_SENIOR:
+            # Senior: transition from senior to elder (orange to red)
+            ratio = (self.age - AGE_MATURE) / (AGE_SENIOR - AGE_MATURE)
+            r = int(SENIOR_COLOR[0] + (ELDER_COLOR[0] - SENIOR_COLOR[0]) * ratio)
+            g = int(SENIOR_COLOR[1] + (ELDER_COLOR[1] - SENIOR_COLOR[1]) * ratio)
+            b = int(SENIOR_COLOR[2] + (ELDER_COLOR[2] - SENIOR_COLOR[2]) * ratio)
             return (r, g, b)
         
         else:
@@ -890,13 +915,13 @@ class Crater:
                     if abs(angle_diff) <= 0.8:  # Use same threshold as in detection
                         # Get age and calculate color
                         age = c.age
-                        if age < AGE_YOUNG:
-                            age_ratio = age / AGE_YOUNG * 0.333
+                        if age < AGE_TEEN:
+                            age_ratio = age / AGE_TEEN * 0.333
+                        elif age < AGE_YOUNG:
+                            age_ratio = 0.333 + ((age - AGE_TEEN) / (AGE_YOUNG - AGE_TEEN) * 0.333)
                         elif age < AGE_ADULT:
-                            age_ratio = 0.333 + ((age - AGE_YOUNG) / (AGE_ADULT - AGE_YOUNG) * 0.333)
-                        elif age < AGE_MATURE:
-                            age_ratio = 0.666 + ((age - AGE_ADULT) / (AGE_MATURE - AGE_ADULT) * 0.334)
-                        else:
+                            age_ratio = 0.666 + ((age - AGE_YOUNG) / (AGE_ADULT - AGE_YOUNG) * 0.333)
+                        elif age < AGE_MIDDLE:
                             age_ratio = 1.0
                         
                         # Round to nearest 0.1
