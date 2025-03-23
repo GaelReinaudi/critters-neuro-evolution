@@ -247,8 +247,17 @@ class Crater:
             craters (list): List of all craters
             
         Returns:
-            dict: Dictionary with distance, mating status, and energy level info
+            dict: Dictionary with distance, mating status, energy level, and age info
         """
+        # Skip calculation if no craters are provided
+        if not craters:
+            return {
+                'distance': SENSOR_RANGE,
+                'mating_distance': SENSOR_RANGE,
+                'energy_level': 0.0,
+                'age_ratio': 0.0
+            }
+            
         # Ray starting point
         ray_x = self.x
         ray_y = self.y
@@ -264,15 +273,20 @@ class Crater:
         result = {
             'distance': SENSOR_RANGE,
             'mating_distance': SENSOR_RANGE,
-            'energy_level': 0.0
+            'energy_level': 0.0,
+            'age_ratio': 0.0
         }
         
         # Track the nearest detected crater for energy reporting
         nearest_crater = None
         min_distance = SENSOR_RANGE
         
+        # Precalculate constants
+        cutoff_squared = DISTANCE_CUTOFF * DISTANCE_CUTOFF
+        
         # Only check craters that are potentially in range
         for crater in craters:
+            # Skip self check
             if crater is self:
                 continue
                 
@@ -282,7 +296,6 @@ class Crater:
             distance_squared = dx*dx + dy*dy
             
             # Skip if crater is definitely too far away
-            cutoff_squared = (DISTANCE_CUTOFF + crater.size) ** 2
             if distance_squared > cutoff_squared:
                 continue
             
@@ -300,13 +313,14 @@ class Crater:
             if abs(angle_diff) > 1.0:
                 continue
                 
-            # Distance to crater center
+            # Calculate the exact distance
             distance_to_center = math.sqrt(distance_squared)
+            
+            # If beyond sensor range plus crater size, skip
             if distance_to_center > SENSOR_RANGE + crater.size:
                 continue
                 
             # More precise angle check now that we know it's worth checking
-            # If not in ray direction (within a small cone), skip
             if abs(angle_diff) > 0.5:  # About 30 degrees
                 continue
                 
@@ -320,12 +334,26 @@ class Crater:
                 nearest_crater = crater
             
             # Update mating crater distance if this crater is mating
-            if hasattr(crater, 'is_mating') and crater.is_mating and distance < result['mating_distance']:
+            # Avoid hasattr check for better performance
+            if getattr(crater, 'is_mating', False) and distance < result['mating_distance']:
                 result['mating_distance'] = distance
         
-        # Get energy level from the nearest crater
-        if nearest_crater and hasattr(nearest_crater, 'energy'):
+        # Get energy level and age from the nearest crater
+        if nearest_crater:
             result['energy_level'] = nearest_crater.energy / nearest_crater.max_energy
+            
+            # Fast age calculation
+            age = nearest_crater.age
+            if age < AGE_YOUNG:
+                result['age_ratio'] = age / AGE_YOUNG * 0.333
+            elif age < AGE_ADULT:
+                result['age_ratio'] = 0.333 + ((age - AGE_YOUNG) / 
+                                             (AGE_ADULT - AGE_YOUNG) * 0.333)
+            elif age < AGE_MATURE:
+                result['age_ratio'] = 0.666 + ((age - AGE_ADULT) / 
+                                             (AGE_MATURE - AGE_ADULT) * 0.334)
+            else:
+                result['age_ratio'] = 1.0
         
         return result
     
@@ -751,14 +779,19 @@ class Crater:
             # Elder crater: red
             return ELDER_COLOR
 
-    def draw(self, surface, draw_sensors=False):
+    def draw(self, surface, draw_sensors=False, craters=None):
         """
         Draw the crater and optionally its sensors
         
         Args:
             surface: Pygame surface to draw on
             draw_sensors (bool): Whether to draw sensor rays
+            craters (list): List of all craters for sensor detection visualization
         """
+        # Skip drawing if not visible
+        if self.x < -50 or self.x > WIDTH + 50 or self.y < -50 or self.y > HEIGHT + 50:
+            return
+            
         # Get color based on age
         crater_color = self.get_age_color()
         
@@ -801,94 +834,127 @@ class Crater:
             energy_text = self.font.render(f"{int(self.energy)}", True, ENERGY_TEXT_COLOR)
             surface.blit(energy_text, (self.x - 10, self.y - 5))
         
-        # Draw sensors if enabled (and only if the crater is within view)
-        if draw_sensors and self.energy > 0:
-            # Skip drawing sensors for craters that are likely not visible
-            if self.x < -50 or self.x > WIDTH + 50 or self.y < -50 or self.y > HEIGHT + 50:
-                return
-                
-            # Define colors for different sensor types
-            WALL_DISTANT_COLOR = (60, 30, 30)    # Very dim red for walls out of effective range
-            WALL_CLOSE_COLOR = (255, 0, 0)       # Bright red for walls in effective range
-            CRATER_SENSOR_COLOR = (255, 255, 0)   # Yellow for craters
-            MATING_SENSOR_COLOR = (255, 0, 255)   # Magenta for mating craters
-            FOOD_SENSOR_COLOR = (0, 255, 0)       # Green for food
+        # Draw sensors if enabled (and only if the crater is within view and has energy)
+        if not draw_sensors or self.energy <= 0:
+            return
+        
+        # Predefined colors for different sensor types
+        WALL_CLOSE_COLOR = (255, 0, 0)        # Bright red for walls
+        YOUNG_CRATER_COLOR = (100, 100, 255)  # Blue for young craters
+        ADULT_CRATER_COLOR = (100, 255, 100)  # Green for adult craters
+        MATURE_CRATER_COLOR = (255, 255, 100) # Yellow for mature craters
+        ELDER_CRATER_COLOR = (255, 100, 100)  # Red for elder craters
+        MATING_SENSOR_COLOR = (255, 0, 255)   # Magenta for mating craters
+        FOOD_SENSOR_COLOR = (0, 255, 0)       # Green for food
+        
+        # Skip redundant rays for performance
+        ray_step = 2
+        
+        # Pre-compute crater age colors (only once)
+        age_colors = {}
+        for i in range(11):  # 0.0 to 1.0 in 0.1 increments
+            ratio = i / 10
+            if ratio < 0.333:  # Young
+                # Young to Adult transition (blue to green)
+                r_ratio = ratio / 0.333
+                r = int(YOUNG_CRATER_COLOR[0] + (ADULT_CRATER_COLOR[0] - YOUNG_CRATER_COLOR[0]) * r_ratio)
+                g = int(YOUNG_CRATER_COLOR[1] + (ADULT_CRATER_COLOR[1] - YOUNG_CRATER_COLOR[1]) * r_ratio)
+                b = int(YOUNG_CRATER_COLOR[2] + (ADULT_CRATER_COLOR[2] - YOUNG_CRATER_COLOR[2]) * r_ratio)
+                age_colors[i/10] = (r, g, b)
+            elif ratio < 0.666:  # Adult
+                # Adult to Mature transition (green to yellow)
+                r_ratio = (ratio - 0.333) / 0.333
+                r = int(ADULT_CRATER_COLOR[0] + (MATURE_CRATER_COLOR[0] - ADULT_CRATER_COLOR[0]) * r_ratio)
+                g = int(ADULT_CRATER_COLOR[1] + (MATURE_CRATER_COLOR[1] - ADULT_CRATER_COLOR[1]) * r_ratio)
+                b = int(ADULT_CRATER_COLOR[2] + (MATURE_CRATER_COLOR[2] - ADULT_CRATER_COLOR[2]) * r_ratio)
+                age_colors[i/10] = (r, g, b)
+            else:  # Mature to Elder
+                # Mature to Elder transition (yellow to red)
+                r_ratio = (ratio - 0.666) / 0.334
+                r = int(MATURE_CRATER_COLOR[0] + (ELDER_CRATER_COLOR[0] - MATURE_CRATER_COLOR[0]) * r_ratio)
+                g = int(MATURE_CRATER_COLOR[1] + (ELDER_CRATER_COLOR[1] - MATURE_CRATER_COLOR[1]) * r_ratio)
+                b = int(MATURE_CRATER_COLOR[2] + (ELDER_CRATER_COLOR[2] - MATURE_CRATER_COLOR[2]) * r_ratio)
+                age_colors[i/10] = (r, g, b)
+        
+        for i in range(0, NUM_SENSORS, ray_step):
+            # Cache angle calculation
+            angle = self.rotation + (i * (2 * math.pi / NUM_SENSORS))
             
-            # Draw fewer sensor rays if there are many craters
-            ray_step = 2 if len(self.sensor_readings) > 40 else 1
+            # Index in sensor_readings array
+            base_idx = i * 5
             
-            for i in range(0, NUM_SENSORS, ray_step):
-                angle = self.rotation + (i * (2 * math.pi / NUM_SENSORS))
+            # Get all sensor readings
+            wall_dist = self.sensor_readings[base_idx] * SENSOR_RANGE
+            crater_dist = self.sensor_readings[base_idx + 1] * SENSOR_RANGE
+            mating_dist = self.sensor_readings[base_idx + 2] * SENSOR_RANGE
+            crater_energy = self.sensor_readings[base_idx + 3]  # Normalized 0-1
+            food_dist = self.sensor_readings[base_idx + 4] * SENSOR_RANGE
+            
+            # For efficient rendering, only get age info if really needed
+            crater_sensor_color = ADULT_CRATER_COLOR
+            if craters and crater_dist < SENSOR_RANGE:
+                crater_info = self.get_crater_info(angle, [c for c in craters 
+                                                      if isinstance(c, Crater) and c is not self 
+                                                      and abs(c.x - self.x) < DISTANCE_CUTOFF 
+                                                      and abs(c.y - self.y) < DISTANCE_CUTOFF])
                 
-                # Index in sensor_readings array
-                base_idx = i * 5
+                # Get color from precomputed table for efficiency
+                age_ratio = crater_info['age_ratio']
+                # Round to nearest 0.1
+                age_key = round(age_ratio * 10) / 10
+                age_key = min(1.0, max(0.0, age_key))  # Clamp between 0 and 1
+                crater_sensor_color = age_colors.get(age_key, ADULT_CRATER_COLOR)
+            
+            # List to store detections (only if something was detected)
+            sensors_to_draw = []
+            
+            # Only add lines that actually detected something
+            if wall_dist < WALL_DETECTION_RANGE:
+                sensors_to_draw.append((wall_dist, WALL_CLOSE_COLOR, 2))
                 
-                # Get all sensor readings
-                wall_dist = self.sensor_readings[base_idx] * SENSOR_RANGE
-                crater_dist = self.sensor_readings[base_idx + 1] * SENSOR_RANGE
-                mating_dist = self.sensor_readings[base_idx + 2] * SENSOR_RANGE
-                crater_energy = self.sensor_readings[base_idx + 3]  # Normalized 0-1
-                food_dist = self.sensor_readings[base_idx + 4] * SENSOR_RANGE
+            if food_dist < SENSOR_RANGE:
+                sensors_to_draw.append((food_dist, FOOD_SENSOR_COLOR, 3))
                 
-                # Calculate sensor endpoints
-                end_x = self.x + SENSOR_RANGE * math.cos(angle)
-                end_y = self.y + SENSOR_RANGE * math.sin(angle)
+            if mating_dist < SENSOR_RANGE:
+                sensors_to_draw.append((mating_dist, MATING_SENSOR_COLOR, 2))
                 
-                # Draw a thin background line for the full sensor range
-                pygame.draw.line(surface, (50, 50, 50), (self.x, self.y), (end_x, end_y), 1)
+            if crater_dist < SENSOR_RANGE:
+                sensors_to_draw.append((crater_dist, crater_sensor_color, 2))
+            
+            # Skip if nothing to draw
+            if not sensors_to_draw:
+                continue
                 
-                # Draw detected objects, starting with the farthest ones first
-                sensors_to_draw = []
+            # Cache sin/cos for this angle to avoid repeated calculations
+            sin_angle = math.sin(angle)
+            cos_angle = math.cos(angle)
                 
-                # Wall detection - always show but with different colors based on distance
-                if wall_dist < SENSOR_RANGE:
-                    # Check if wall is within effective detection range
-                    if wall_dist < WALL_DETECTION_RANGE:
-                        # Wall is close enough to be detected and affect behavior
-                        sensors_to_draw.append((wall_dist, WALL_CLOSE_COLOR, 2))
-                    else:
-                        # Wall is visible but too far to affect behavior
-                        sensors_to_draw.append((wall_dist, WALL_DISTANT_COLOR, 1))
+            # Draw detected objects
+            for distance, color, thickness in sensors_to_draw:
+                # Calculate endpoint of ray based on detection distance
+                detection_end_x = self.x + distance * cos_angle
+                detection_end_y = self.y + distance * sin_angle
                 
-                # Add other sensor types
-                if food_dist < SENSOR_RANGE:
-                    sensors_to_draw.append((food_dist, FOOD_SENSOR_COLOR, 3))  # Food (thickest)
-                if mating_dist < SENSOR_RANGE:
-                    sensors_to_draw.append((mating_dist, MATING_SENSOR_COLOR, 2))  # Mating
-                if crater_dist < SENSOR_RANGE:
-                    sensors_to_draw.append((crater_dist, CRATER_SENSOR_COLOR, 2))  # Craters
+                # Make line thickness based on how close the object is
+                thickness = max(thickness, int(4 * (1 - distance / SENSOR_RANGE)))
                 
-                # Sort by distance (descending) and only draw if something was detected
-                if sensors_to_draw:
-                    sensors_to_draw.sort(key=lambda x: x[0], reverse=True)
-                    
-                    # Draw sensors in order (farthest to closest)
-                    for distance, color, thickness in sensors_to_draw:
-                        detection_end_x = self.x + distance * math.cos(angle)
-                        detection_end_y = self.y + distance * math.sin(angle)
-                        
-                        # Make line thickness based on how close the object is and its type
-                        if thickness > 1:
-                            # For non-wall sensors, scale thickness by distance
-                            thickness = max(thickness, int(4 * (1 - distance / SENSOR_RANGE)))
-                        
-                        # Draw the ray to the detected object
-                        pygame.draw.line(surface, color, (self.x, self.y), 
-                                      (detection_end_x, detection_end_y), thickness)
+                # Draw the ray only if something was detected
+                pygame.draw.line(surface, color, (self.x, self.y), 
+                              (detection_end_x, detection_end_y), thickness)
+            
+            # If a crater with energy is detected, draw a small circle showing energy level
+            if crater_dist < SENSOR_RANGE and crater_energy > 0:
+                energy_pos_x = self.x + crater_dist * cos_angle
+                energy_pos_y = self.y + crater_dist * sin_angle
                 
-                # If a crater with energy is detected, draw a small circle showing energy level
-                if crater_dist < SENSOR_RANGE and crater_energy > 0:
-                    energy_pos_x = self.x + crater_dist * math.cos(angle)
-                    energy_pos_y = self.y + crater_dist * math.sin(angle)
-                    
-                    # Energy indicator color: green (high) to red (low)
-                    energy_r = int(255 * (1 - crater_energy))
-                    energy_g = int(255 * crater_energy)
-                    energy_color = (energy_r, energy_g, 0)
-                    
-                    # Size based on energy level
-                    energy_size = 2 + int(3 * crater_energy)
-                    
-                    # Draw energy indicator
-                    pygame.draw.circle(surface, energy_color, 
-                                    (int(energy_pos_x), int(energy_pos_y)), energy_size) 
+                # Energy indicator color: green (high) to red (low)
+                energy_r = int(255 * (1 - crater_energy))
+                energy_g = int(255 * crater_energy)
+                energy_color = (energy_r, energy_g, 0)
+                
+                # Size based on energy level
+                energy_size = 2 + int(3 * crater_energy)
+                
+                # Draw energy indicator
+                pygame.draw.circle(surface, energy_color, 
+                                (int(energy_pos_x), int(energy_pos_y)), energy_size) 

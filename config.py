@@ -26,11 +26,11 @@ AGE_MATURE = 5000    # Frames until considered elder
 
 # Simulation parameters
 NUM_CRATERS = 200
-NUM_SENSORS = 16  # Doubled number of sensor rays for better coverage
-SENSOR_RANGE = 400  # How far sensors can detect
-WALL_DETECTION_RANGE = 50  # Very short range for wall detection (only when very close)
+NUM_SENSORS = 8  # Reduced number of sensors for better performance
+SENSOR_RANGE = 120  # Maximum detection range for sensors
+WALL_DETECTION_RANGE = 50  # Wall detection range
 NUM_FOOD_PELLETS = 500  # Number of food pellets
-FOOD_SPAWN_INTERVAL = 60  # Frames between food spawning attempts
+FOOD_SPAWN_INTERVAL = 10  # Frames between food spawning attempts
 
 # Energy settings
 FOOD_ENERGY = 200  # Energy gained from food (increased)
@@ -59,11 +59,11 @@ NETWORK_ACTIVATION = 'relu'  # Activation function: 'relu', 'leaky_relu', 'tanh'
 
 # Optimization settings
 USE_SPATIAL_HASH = True  # Use spatial partitioning for faster collision detection
-CELL_SIZE = 120  # Size of each spatial hash cell (should match DISTANCE_CUTOFF)
+CELL_SIZE = 120  # Size of each spatial hash cell
 BATCH_PROCESSING = True  # Process entities in batches for better cache locality
-SENSOR_UPDATE_FRAMES = 1  # Update sensors every N frames (higher = more performance, less accuracy)
-DISTANCE_CUTOFF = 350  # Maximum distance to check for interactions (lower = better performance)
-FOOD_DETECTION_RANGE = 350  # Maximum distance to detect food (higher than general DISTANCE_CUTOFF)
+SENSOR_UPDATE_FRAMES = 3  # Update sensors less frequently for better performance
+DISTANCE_CUTOFF = 120  # Distance to check for interactions
+FOOD_DETECTION_RANGE = 160  # Longer range for food detection (higher than DISTANCE_CUTOFF)
 PRECOMPUTE_ANGLES = True  # Precompute sin/cos values for common angles
 SKIP_FRAMES_WHEN_LAGGING = True  # Skip update frames if framerate is too low
 USE_SENSOR_CACHING = True  # Cache sensor readings between updates
