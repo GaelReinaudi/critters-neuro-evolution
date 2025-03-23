@@ -171,14 +171,54 @@ class CraterSimulation:
         # Spawn new food periodically
         self.food_spawn_timer += 1
         if self.food_spawn_timer >= self.food_spawn_interval:
-            if active_food < NUM_FOOD_PELLETS:
-                # Replace consumed food
-                for food in self.food_pellets:
-                    if not food.active:
-                        food.set_position()  # Generate new random position
-                        food.active = True
-                        break
+            # Reset timer
             self.food_spawn_timer = 0
+            
+            # Try to find an inactive food to reactivate
+            inactive_food = None
+            for food in self.food_pellets:
+                if not food.active:
+                    inactive_food = food
+                    break
+            
+            # If we found an inactive food, try to place it
+            if inactive_food:
+                # Generate a random position
+                inactive_food.set_position()
+                
+                # Check if this position overlaps with any food or craters
+                position_valid = True
+                
+                # Check for overlap with other food
+                for other_food in self.food_pellets:
+                    if other_food is not inactive_food and other_food.active:
+                        # Calculate distance between the two food items
+                        dx = inactive_food.x - other_food.x
+                        dy = inactive_food.y - other_food.y
+                        distance = (dx*dx + dy*dy) ** 0.5
+                        
+                        # If food items are too close, this position is invalid
+                        if distance < inactive_food.size + other_food.size:
+                            position_valid = False
+                            break
+                
+                # If position is still valid, check for overlap with craters
+                if position_valid:
+                    for crater in self.craters:
+                        # Calculate distance between food and crater
+                        dx = inactive_food.x - crater.x
+                        dy = inactive_food.y - crater.y
+                        distance = (dx*dx + dy*dy) ** 0.5
+                        
+                        # If food is too close to a crater, this position is invalid
+                        if distance < inactive_food.size + crater.size:
+                            position_valid = False
+                            break
+                
+                # Only activate food if position is valid
+                if position_valid:
+                    inactive_food.active = True
+                # Otherwise, skip this food spawn opportunity
     
     def _update_crater_batch(self, batch, craters_to_remove, mating_pairs, new_craters):
         """Process a batch of craters for better cache locality"""
