@@ -37,6 +37,7 @@ class CraterSimulation:
         self.frame_times = []
         self.avg_frame_time = 0.0
         self.last_frame_time = time.time()
+        self.skip_frame = False  # For frame skipping optimization
         
         # Evolution tracking
         self.generation = 0
