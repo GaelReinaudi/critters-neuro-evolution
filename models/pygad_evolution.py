@@ -3,8 +3,7 @@ PyGAD integration for crater evolution
 """
 import random
 import numpy as np
-import pygad.crossover
-import pygad.mutation
+import pygad
 from craters.config import (
     MUTATION_RATE, MUTATION_SCALE, 
     USE_DEEP_NETWORK, NETWORK_HIDDEN_LAYERS
@@ -49,40 +48,55 @@ class GeneticAlgorithmManager:
         # Create parents array for PyGAD
         parents = np.array([parent1_chromosome, parent2_chromosome])
         
-        # Use PyGAD's crossover function directly without needing the full GA instance
+        # Use PyGAD for crossover and mutation
         if USE_DEEP_NETWORK:
             # For deep networks, use single point crossover
-            offspring = pygad.crossover.single_point_crossover(
-                parents,
-                offspring_size=(1, len(parent1_chromosome))
-            )[0]
-            
-            # Apply mutation using PyGAD's mutation function
-            offspring = pygad.mutation.random_mutation(
-                offspring=offspring,
-                mutation_percent_genes=MUTATION_RATE * 100, 
+            # The direct functions are not available in version 3.x, so we'll create a GA instance temporarily
+            ga_instance = pygad.GA(
+                num_generations=1,
+                num_parents_mating=2,
+                sol_per_pop=2,
+                num_genes=len(parent1_chromosome),
+                fitness_func=lambda x, y: 0,  # Dummy fitness function
+                crossover_type="single_point",
+                mutation_type="random",
+                mutation_percent_genes=MUTATION_RATE * 100,
                 mutation_by_replacement=False,
                 random_mutation_min_val=-MUTATION_SCALE,
-                random_mutation_max_val=MUTATION_SCALE
+                random_mutation_max_val=MUTATION_SCALE,
+                keep_parents=0
             )
+            
+            # Perform crossover
+            offspring = ga_instance.crossover(parents, (1, len(parent1_chromosome)))[0]
+            
+            # Perform mutation
+            offspring = ga_instance.mutation(offspring)
             
             # Convert chromosome back to network
             child_brain = self._chromosome_to_network(offspring, parent1.brain)
         else:
             # For simple networks, same approach
-            offspring = pygad.crossover.single_point_crossover(
-                parents,
-                offspring_size=(1, len(parent1_chromosome))
-            )[0]
-            
-            # Apply mutation
-            offspring = pygad.mutation.random_mutation(
-                offspring=offspring,
-                mutation_percent_genes=MUTATION_RATE * 100, 
+            ga_instance = pygad.GA(
+                num_generations=1,
+                num_parents_mating=2,
+                sol_per_pop=2,
+                num_genes=len(parent1_chromosome),
+                fitness_func=lambda x, y: 0,  # Dummy fitness function
+                crossover_type="single_point",
+                mutation_type="random",
+                mutation_percent_genes=MUTATION_RATE * 100,
                 mutation_by_replacement=False,
                 random_mutation_min_val=-MUTATION_SCALE,
-                random_mutation_max_val=MUTATION_SCALE
+                random_mutation_max_val=MUTATION_SCALE,
+                keep_parents=0
             )
+            
+            # Perform crossover
+            offspring = ga_instance.crossover(parents, (1, len(parent1_chromosome)))[0]
+            
+            # Perform mutation
+            offspring = ga_instance.mutation(offspring)
             
             # Convert chromosome back to network
             child_brain = self._chromosome_to_network(offspring, parent1.brain)
