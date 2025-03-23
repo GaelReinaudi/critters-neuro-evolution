@@ -353,6 +353,12 @@ class Crater:
                                              (AGE_ADULT - AGE_YOUNG) * 0.333)
             elif age < AGE_MIDDLE:
                 result['age_ratio'] = 1.0
+            elif age < AGE_MATURE:
+                result['age_ratio'] = 1.0
+            elif age < AGE_SENIOR:
+                result['age_ratio'] = 1.0
+            else:
+                result['age_ratio'] = 1.0
         
         return result
     
@@ -921,6 +927,12 @@ class Crater:
                         elif age < AGE_ADULT:
                             age_ratio = 0.666 + ((age - AGE_YOUNG) / (AGE_ADULT - AGE_YOUNG) * 0.333)
                         elif age < AGE_MIDDLE:
+                            age_ratio = 1.0
+                        elif age < AGE_MATURE:
+                            age_ratio = 1.0
+                        elif age < AGE_SENIOR:
+                            age_ratio = 1.0
+                        else:
                             age_ratio = 1.0
                         
                         # Round to nearest 0.1
