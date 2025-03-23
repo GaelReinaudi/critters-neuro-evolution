@@ -871,8 +871,12 @@ class Crater:
                 abs(c.y - self.y) < DISTANCE_CUTOFF
             )]
         
-        # Skip sensor drawing if nothing is nearby
-        if not nearby_craters and sum(self.sensor_readings[4::5]) >= NUM_SENSORS:  # All food readings are max
+        # Skip sensor drawing if nothing is nearby - but ONLY skip if we're not near walls
+        # Check if any wall sensors are detecting something
+        wall_detections = any(self.sensor_readings[i*5] * SENSOR_RANGE < WALL_DETECTION_RANGE for i in range(NUM_SENSORS))
+        
+        # Only skip if no nearby craters, no nearby food, AND no nearby walls
+        if not nearby_craters and not wall_detections and sum(self.sensor_readings[4::5]) >= NUM_SENSORS:  # All food readings are max
             return
             
         for i in range(0, NUM_SENSORS, ray_step):
