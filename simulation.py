@@ -121,7 +121,7 @@ class CraterSimulation:
         # First pass: update all craters and check for mating
         if BATCH_PROCESSING:
             # Process craters in batches for better locality
-            batch_size = min(20, len(self.craters))
+            batch_size = max(1, min(20, len(self.craters)))  # Ensure batch size is at least 1
             for i in range(0, len(self.craters), batch_size):
                 batch = self.craters[i:i+batch_size]
                 self._update_crater_batch(batch, craters_to_remove, mating_pairs, new_craters)

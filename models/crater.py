@@ -561,11 +561,15 @@ class Crater:
             self.inactive_frames += 1
             # Apply inactivity penalty after threshold is reached
             if self.inactive_frames > self.inactivity_threshold:
-                # Increase energy cost as inactivity persists
-                inactivity_penalty = 0.2 * (1 + (self.inactive_frames - self.inactivity_threshold) / 100)
-                # Cap the penalty to avoid instant death
-                inactivity_penalty = min(inactivity_penalty, 2.0)
-                self.energy -= inactivity_penalty
+                # Reduce speed as inactivity persists instead of directly reducing energy
+                # Apply stronger reduction the longer the inactivity continues
+                speed_reduction = 0.05 * (1 + (self.inactive_frames - self.inactivity_threshold) / 50)
+                # Cap the reduction to avoid complete freezing
+                speed_reduction = min(speed_reduction, 0.5)
+                # Reduce speed by a percentage
+                self.speed *= (1 - speed_reduction)
+                # Still apply a small energy penalty
+                self.energy -= 0.1
         else:
             # Reset inactivity counter when there's significant movement
             self.inactive_frames = max(0, self.inactive_frames - 2)  # Decrease twice as fast
