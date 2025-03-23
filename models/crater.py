@@ -284,13 +284,9 @@ class Crater:
             cutoff_squared = (DISTANCE_CUTOFF + crater.size) ** 2
             if distance_squared > cutoff_squared:
                 continue
-                
-            # Distance to crater center
-            distance_to_center = math.sqrt(distance_squared)
-            if distance_to_center > SENSOR_RANGE + crater.size:
-                continue
-                
-            # Angle to crater
+            
+            # Early angle rejection - check if generally in the right direction
+            # Calculate angle from ray to crater
             angle_to_crater = math.atan2(dy, dx)
             
             # Normalize angle difference to [-pi, pi]
@@ -298,6 +294,17 @@ class Crater:
             if angle_diff > math.pi:
                 angle_diff -= 2 * math.pi
                 
+            # If not in ray direction (within a small cone), skip
+            # Use wider threshold for initial check (about 60 degrees)
+            if abs(angle_diff) > 1.0:
+                continue
+                
+            # Distance to crater center
+            distance_to_center = math.sqrt(distance_squared)
+            if distance_to_center > SENSOR_RANGE + crater.size:
+                continue
+                
+            # More precise angle check now that we know it's worth checking
             # If not in ray direction (within a small cone), skip
             if abs(angle_diff) > 0.5:  # About 30 degrees
                 continue
@@ -359,13 +366,9 @@ class Crater:
             cutoff_squared = (DISTANCE_CUTOFF + food.size) ** 2
             if distance_squared > cutoff_squared:
                 continue
-                
-            # Distance to food center
-            distance_to_center = math.sqrt(distance_squared)
-            if distance_to_center > SENSOR_RANGE + food.size:
-                continue
-                
-            # Angle to food
+            
+            # Early angle rejection - check if generally in the right direction
+            # Calculate angle from ray to food
             angle_to_food = math.atan2(dy, dx)
             
             # Normalize angle difference to [-pi, pi]
@@ -373,6 +376,16 @@ class Crater:
             if angle_diff > math.pi:
                 angle_diff -= 2 * math.pi
                 
+            # If not in ray direction (within a wider cone for early rejection), skip
+            if abs(angle_diff) > 1.0:  # About 60 degrees
+                continue
+                
+            # Distance to food center
+            distance_to_center = math.sqrt(distance_squared)
+            if distance_to_center > SENSOR_RANGE + food.size:
+                continue
+            
+            # More precise angle check now that we know it's worth checking
             # If not in ray direction (within a small cone), skip
             if abs(angle_diff) > 0.5:  # About 30 degrees
                 continue
@@ -770,7 +783,7 @@ class Crater:
                 surface.blit(indicator_text, (self.x + self.size + 5, self.y - 15))
         
         # If inactive and being penalized, draw a dark red border
-        if self.inactive_frames > self.inactivity_threshold:
+        elif self.inactive_frames > self.inactivity_threshold:
             # Make border darker red as inactivity increases
             intensity = min(255, 100 + (self.inactive_frames - self.inactivity_threshold) // 2)
             inactive_color = (intensity, 0, 0)  # Dark red
@@ -785,15 +798,22 @@ class Crater:
             energy_text = self.font.render(f"{int(self.energy)}", True, ENERGY_TEXT_COLOR)
             surface.blit(energy_text, (self.x - 10, self.y - 5))
         
-        # Draw sensors if enabled
+        # Draw sensors if enabled (and only if the crater is within view)
         if draw_sensors and self.energy > 0:
+            # Skip drawing sensors for craters that are likely not visible
+            if self.x < -50 or self.x > WIDTH + 50 or self.y < -50 or self.y > HEIGHT + 50:
+                return
+                
             # Define colors for different sensor types
             WALL_SENSOR_COLOR = (255, 0, 0)       # Red for walls
             CRATER_SENSOR_COLOR = (255, 255, 0)   # Yellow for craters
             MATING_SENSOR_COLOR = (255, 0, 255)   # Magenta for mating craters
             FOOD_SENSOR_COLOR = (0, 255, 0)       # Green for food
             
-            for i in range(NUM_SENSORS):
+            # Draw fewer sensor rays if there are many craters
+            ray_step = 2 if len(self.sensor_readings) > 40 else 1
+            
+            for i in range(0, NUM_SENSORS, ray_step):
                 angle = self.rotation + (i * (2 * math.pi / NUM_SENSORS))
                 
                 # Index in sensor_readings array
@@ -814,19 +834,24 @@ class Crater:
                 pygame.draw.line(surface, (50, 50, 50), (self.x, self.y), (end_x, end_y), 1)
                 
                 # Draw detected objects, starting with the farthest ones first
-                sensors_to_draw = [
-                    (wall_dist, WALL_SENSOR_COLOR),
-                    (crater_dist, CRATER_SENSOR_COLOR),
-                    (mating_dist, MATING_SENSOR_COLOR),
-                    (food_dist, FOOD_SENSOR_COLOR)
-                ]
+                sensors_to_draw = []
                 
-                # Sort by distance (descending)
-                sensors_to_draw.sort(key=lambda x: x[0], reverse=True)
+                # Only add sensors that detected something
+                if wall_dist < SENSOR_RANGE:
+                    sensors_to_draw.append((wall_dist, WALL_SENSOR_COLOR))
+                if crater_dist < SENSOR_RANGE:
+                    sensors_to_draw.append((crater_dist, CRATER_SENSOR_COLOR))
+                if mating_dist < SENSOR_RANGE:
+                    sensors_to_draw.append((mating_dist, MATING_SENSOR_COLOR))
+                if food_dist < SENSOR_RANGE:
+                    sensors_to_draw.append((food_dist, FOOD_SENSOR_COLOR))
                 
-                # Draw sensors in order (farthest to closest)
-                for distance, color in sensors_to_draw:
-                    if distance < SENSOR_RANGE:
+                # Sort by distance (descending) and only draw if something was detected
+                if sensors_to_draw:
+                    sensors_to_draw.sort(key=lambda x: x[0], reverse=True)
+                    
+                    # Draw sensors in order (farthest to closest)
+                    for distance, color in sensors_to_draw:
                         detection_end_x = self.x + distance * math.cos(angle)
                         detection_end_y = self.y + distance * math.sin(angle)
                         

@@ -1,21 +1,21 @@
 """
-Spatial hash grid for efficient collision detection and neighbor finding
+Spatial hash grid for efficient entity collision detection
 """
-import math
+from craters.config import CELL_SIZE
 
 class SpatialHash:
     """
-    A spatial hash grid for efficient proximity queries
+    A spatial hash grid for efficiently finding nearby entities
     """
-    def __init__(self, cell_size=100):
+    def __init__(self, cell_size=CELL_SIZE):
         """
         Initialize the spatial hash grid
         
         Args:
-            cell_size (float): Size of each grid cell
+            cell_size (int): Size of each grid cell
         """
         self.cell_size = cell_size
-        self.grid = {}  # Maps grid cell (x,y) to list of entities
+        self.grid = {}  # Dictionary mapping cell positions to lists of entities
         
     def _get_cell_pos(self, x, y):
         """
@@ -28,22 +28,46 @@ class SpatialHash:
         Returns:
             tuple: Grid cell coordinates (cell_x, cell_y)
         """
-        cell_x = math.floor(x / self.cell_size)
-        cell_y = math.floor(y / self.cell_size)
+        cell_x = int(x // self.cell_size)
+        cell_y = int(y // self.cell_size)
         return (cell_x, cell_y)
     
-    def _get_cells_for_entity(self, entity):
+    def _get_cells_for_entity(self, entity, radius=None):
         """
-        Get all grid cells that an entity might overlap with
+        Get all grid cells that an entity overlaps with
         
         Args:
-            entity: Entity with x, y, and size attributes
+            entity: Entity with x, y attributes
+            radius: Optional extra radius to consider around the entity
             
         Returns:
-            list: List of grid cell coordinates
+            list: List of cell positions (tuples)
         """
-        # For simplicity, just return the cell containing the entity's center
-        return [self._get_cell_pos(entity.x, entity.y)]
+        # Handle entities with size attribute
+        entity_radius = getattr(entity, 'size', 0)
+        
+        # Add the search radius if provided
+        if radius is not None:
+            entity_radius += radius
+            
+        # Determine cell range to check
+        min_x = entity.x - entity_radius
+        max_x = entity.x + entity_radius
+        min_y = entity.y - entity_radius
+        max_y = entity.y + entity_radius
+        
+        # Convert to cell positions
+        min_cell_x = int(min_x // self.cell_size)
+        max_cell_x = int(max_x // self.cell_size)
+        min_cell_y = int(min_y // self.cell_size)
+        max_cell_y = int(max_y // self.cell_size)
+        
+        # Get all cells in the rectangle
+        cells = [(x, y) 
+                for x in range(min_cell_x, max_cell_x + 1)
+                for y in range(min_cell_y, max_cell_y + 1)]
+                
+        return cells
     
     def clear(self):
         """Clear all entities from the grid"""
@@ -62,46 +86,43 @@ class SpatialHash:
                 self.grid[cell_pos] = []
             self.grid[cell_pos].append(entity)
             
-    def get_nearby_entities(self, entity, max_distance=None):
+    def get_nearby_entities(self, entity, radius):
         """
-        Get entities near the given entity
+        Get all entities within a certain radius of the given entity
         
         Args:
-            entity: Entity with x, y, and size attributes
-            max_distance (float, optional): Maximum distance to consider. If None, cell size is used.
+            entity: Entity to check around
+            radius: Maximum distance to search
             
         Returns:
-            list: List of nearby entities, excluding the given entity
+            list: Entities within the radius
         """
-        if max_distance is None:
-            max_distance = self.cell_size
-            
-        # Get all potential nearby entities from the grid
-        nearby = []
-        cell_positions = self._get_cells_for_entity(entity)
+        # Get all potential cells that could contain entities within radius
+        cells = self._get_cells_for_entity(entity)
         
-        # Also check neighboring cells
-        neighbor_offsets = [(0, 0), (1, 0), (0, 1), (-1, 0), (0, -1), 
-                           (1, 1), (-1, -1), (1, -1), (-1, 1)]
+        # Create a set for faster lookups
+        nearby_entities = set()
         
-        for cell_pos in cell_positions:
-            cell_x, cell_y = cell_pos
-            for offset_x, offset_y in neighbor_offsets:
-                neighbor_pos = (cell_x + offset_x, cell_y + offset_y)
-                if neighbor_pos in self.grid:
-                    nearby.extend(self.grid[neighbor_pos])
+        # Entity's position for distance calculations
+        ex, ey = entity.x, entity.y
+        radius_squared = radius * radius
         
-        # Filter out the entity itself and duplicates
-        unique_nearby = []
-        for other in nearby:
-            if other is not entity and other not in unique_nearby:
-                # Optional distance filter
-                if max_distance:
-                    dx = other.x - entity.x
-                    dy = other.y - entity.y
-                    if dx*dx + dy*dy <= max_distance*max_distance:
-                        unique_nearby.append(other)
-                else:
-                    unique_nearby.append(other)
+        # For each cell, check entities
+        for cell in cells:
+            if cell in self.grid:
+                for other in self.grid[cell]:
+                    # Skip if entity is already in set
+                    if other in nearby_entities or other is entity:
+                        continue
+                        
+                    # Use squared distance for faster comparison (avoid sqrt)
+                    dx = other.x - ex
+                    dy = other.y - ey
+                    dist_squared = dx*dx + dy*dy
                     
-        return unique_nearby 
+                    # Check if within radius
+                    if dist_squared <= radius_squared:
+                        nearby_entities.add(other)
+        
+        # Convert to list for return
+        return list(nearby_entities) 

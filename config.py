@@ -1,8 +1,8 @@
 # Configuration parameters for the crater simulation
 
 # Window settings
-WIDTH = 1800
-HEIGHT = 1100
+WIDTH = 1900
+HEIGHT = 1000
 
 # Colors
 BACKGROUND_COLOR = (0, 0, 0)  # Black
@@ -28,8 +28,8 @@ AGE_MATURE = 5000    # Frames until considered elder
 NUM_CRATERS = 200
 NUM_SENSORS = 8  # Number of sensor rays
 SENSOR_RANGE = 100  # How far sensors can detect
-NUM_FOOD_PELLETS = 200  # Number of food pellets
-FOOD_SPAWN_INTERVAL = 10  # Frames between food spawning attempts
+NUM_FOOD_PELLETS = 500  # Number of food pellets
+FOOD_SPAWN_INTERVAL = 60  # Frames between food spawning attempts
 
 # Energy settings
 FOOD_ENERGY = 200  # Energy gained from food (increased)
@@ -44,7 +44,7 @@ ACCELERATION_FACTOR = 0.25  # Acceleration multiplier (increased)
 FRICTION = 0.98  # Friction coefficient (reduced friction)
 
 # Mating parameters
-MATING_ENERGY_THRESHOLD = 800  # Energy required to enter mating state
+MATING_ENERGY_THRESHOLD = 300  # Energy required to enter mating state
 MATING_RADIUS = 40  # Distance for detecting other mating craters
 MATING_PROBABILITY = 0.005  # Chance per frame to enter mating state when above threshold
 MATING_DURATION = 300  # How long a crater stays in mating state (in frames)
@@ -57,13 +57,16 @@ NETWORK_HIDDEN_LAYERS = [24, 16, 8]  # Sizes of hidden layers for deep network
 NETWORK_ACTIVATION = 'relu'  # Activation function: 'relu', 'leaky_relu', 'tanh', or 'sigmoid'
 
 # Optimization settings
-USE_SPATIAL_HASH = True           # Use spatial partitioning for faster collision detection
-SENSOR_UPDATE_FRAMES = 3          # Update sensors every N frames
-DISTANCE_CUTOFF = 200             # Ignore interactions beyond this distance
-BATCH_PROCESSING = True           # Process entities in batches
-USE_NUMBA = False                 # Use Numba JIT compilation if available
-PRECOMPUTE_ANGLES = True          # Precompute trigonometric functions
-SKIP_FRAMES_WHEN_LAGGING = True   # Skip frames if FPS drops too low
+USE_SPATIAL_HASH = True  # Use spatial partitioning for faster collision detection
+CELL_SIZE = 120  # Size of each spatial hash cell (should match DISTANCE_CUTOFF)
+BATCH_PROCESSING = True  # Process entities in batches for better cache locality
+SENSOR_UPDATE_FRAMES = 5  # Update sensors every N frames (higher = more performance, less accuracy)
+DISTANCE_CUTOFF = 120  # Maximum distance to check for interactions (lower = better performance)
+PRECOMPUTE_ANGLES = True  # Precompute sin/cos values for common angles
+SKIP_FRAMES_WHEN_LAGGING = True  # Skip update frames if framerate is too low
+USE_SENSOR_CACHING = True  # Cache sensor readings between updates
+USE_FAST_MATH = True  # Use faster math approximations
+REDUCE_DRAW_DETAIL = True  # Reduce drawing detail when many entities are visible
 
 # Display settings
 FONT_SIZE = 18  # Size for energy display

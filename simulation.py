@@ -10,7 +10,7 @@ from craters.config import (
     AGE_YOUNG, AGE_ADULT, AGE_MATURE,
     DISTANCE_CUTOFF, USE_SPATIAL_HASH,
     BATCH_PROCESSING, SKIP_FRAMES_WHEN_LAGGING,
-    FPS, MATING_DURATION
+    FPS, MATING_DURATION, CELL_SIZE
 )
 from craters.models.crater import Crater
 from craters.models.food import Food
@@ -49,7 +49,7 @@ class CraterSimulation:
         
         # Spatial hash for efficient collision detection
         if USE_SPATIAL_HASH:
-            self.spatial_hash = SpatialHash(cell_size=DISTANCE_CUTOFF)
+            self.spatial_hash = SpatialHash(cell_size=CELL_SIZE)
     
     def _update_spatial_hash(self):
         """Update the spatial hash with current entity positions"""
