@@ -2,6 +2,7 @@
 Neural network implementations for craters simulation
 """
 import numpy as np
+import pygad.nn as pygad_nn
 
 class SimpleNeuralNetwork:
     """
@@ -221,4 +222,120 @@ class DeepNeuralNetwork:
         # Using a faster approximation of sigmoid
         # For values in a reasonable range (-5 to 5), this is quite accurate
         # and much faster than exp
-        return 0.5 * (1 + np.tanh(0.5 * x)) 
+        return 0.5 * (1 + np.tanh(0.5 * x))
+
+
+class PyGADNeuralNetwork:
+    """
+    Neural network implementation using pyGAD
+    """
+    def __init__(self, input_size, hidden_layers, output_size, weights=None):
+        """
+        Initialize neural network with random weights or provided weights
+        
+        Args:
+            input_size (int): Number of input neurons
+            hidden_layers (list): List of hidden layer sizes
+            output_size (int): Number of output neurons
+            weights (list, optional): Flattened list of weights if already available
+        """
+        self.input_size = input_size
+        self.hidden_layers = hidden_layers
+        self.output_size = output_size
+        
+        # Define network architecture
+        self.network_architecture = [input_size] + hidden_layers + [output_size]
+        
+        # Calculate the number of weights needed
+        self.num_weights = 0
+        for i in range(len(self.network_architecture) - 1):
+            # Weights + biases for this layer
+            layer_weights = (self.network_architecture[i] * self.network_architecture[i+1]) + self.network_architecture[i+1]
+            self.num_weights += layer_weights
+        
+        # Initialize weights manually if not provided
+        if weights is None:
+            # Create random weights
+            self.weights = np.random.uniform(-0.1, 0.1, size=self.num_weights)
+        else:
+            # Use provided weights
+            self.weights = np.array(weights)
+        
+        # Create the layer weights and biases
+        self._create_layers_from_weights()
+            
+        # Cache for forward pass
+        self.last_input = None
+        self.output_cache = None
+    
+    def _create_layers_from_weights(self):
+        """Convert flat weights array to weight matrices and bias vectors for each layer"""
+        self.layer_weights = []
+        self.layer_biases = []
+        
+        # Index to keep track of position in flattened weights array
+        idx = 0
+        
+        # For each layer
+        for i in range(len(self.network_architecture) - 1):
+            # Get dimensions
+            input_size = self.network_architecture[i]
+            output_size = self.network_architecture[i+1]
+            
+            # Extract weights for this layer
+            w_size = input_size * output_size
+            w = self.weights[idx:idx+w_size].reshape(output_size, input_size)
+            idx += w_size
+            
+            # Extract biases for this layer
+            b = self.weights[idx:idx+output_size].reshape(output_size, 1)
+            idx += output_size
+            
+            # Save weights and biases
+            self.layer_weights.append(w)
+            self.layer_biases.append(b)
+    
+    def forward(self, inputs):
+        """
+        Forward pass through the network
+        
+        Args:
+            inputs (list or array): Input values
+            
+        Returns:
+            array: Output values (0-1 range)
+        """
+        # Check if we can reuse cached results
+        inputs_array = np.array(inputs)
+        if self.last_input is not None and np.array_equal(inputs_array, self.last_input):
+            return self.output_cache
+        
+        # Save the current input
+        self.last_input = inputs_array.copy()
+        
+        # Convert to column vector
+        x = inputs_array.reshape(-1, 1)
+        
+        # Forward pass through each layer
+        for i in range(len(self.layer_weights) - 1):
+            # Linear transformation
+            z = np.dot(self.layer_weights[i], x) + self.layer_biases[i]
+            # ReLU activation for hidden layers
+            x = np.maximum(0, z)
+        
+        # Output layer with sigmoid activation
+        z_out = np.dot(self.layer_weights[-1], x) + self.layer_biases[-1]
+        output = 1.0 / (1.0 + np.exp(-z_out))
+        
+        # Cache the result
+        self.output_cache = output.flatten()
+        
+        return self.output_cache
+    
+    def get_weights(self):
+        """Get flattened weights for genetic algorithm
+        
+        Returns:
+            list: Flattened weights and biases
+        """
+        return self.weights.tolist() 

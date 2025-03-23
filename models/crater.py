@@ -6,6 +6,7 @@ import math
 import copy
 import pygame
 import numpy as np
+import pygad
 from craters.config import (
     WIDTH, HEIGHT, SENSOR_RANGE, NUM_SENSORS,
     DIRECTION_COLOR, ENERGY_TEXT_COLOR, INITIAL_ENERGY,
@@ -19,7 +20,7 @@ from craters.config import (
     NETWORK_HIDDEN_LAYERS, NETWORK_ACTIVATION, FOOD_DETECTION_RANGE,
     WALL_DETECTION_RANGE
 )
-from craters.models.neural_network import SimpleNeuralNetwork, DeepNeuralNetwork
+from craters.models.neural_network import SimpleNeuralNetwork, DeepNeuralNetwork, PyGADNeuralNetwork
 
 # Precompute sensor angles if enabled
 if PRECOMPUTE_ANGLES:
@@ -79,15 +80,12 @@ class Crater:
             input_size = NUM_SENSORS * 5 + 1
             output_size = 3  # forward, reverse, rotation
             
-            if USE_DEEP_NETWORK:
-                self.brain = DeepNeuralNetwork(
-                    input_size=input_size,
-                    hidden_layers=NETWORK_HIDDEN_LAYERS,
-                    output_size=output_size,
-                    activation=NETWORK_ACTIVATION
-                )
-            else:
-                self.brain = SimpleNeuralNetwork(input_size, 12, output_size)
+            # Use PyGADNeuralNetwork instead of the original networks
+            self.brain = PyGADNeuralNetwork(
+                input_size=input_size,
+                hidden_layers=NETWORK_HIDDEN_LAYERS,
+                output_size=output_size
+            )
         else:
             self.brain = brain
         
@@ -643,9 +641,10 @@ class Crater:
         return max(0, fitness)  # Ensure fitness is never negative
     
     @classmethod
-    def create_offspring(cls, parent1, parent2, mutation_rate=MUTATION_RATE, mutation_scale=MUTATION_SCALE, energy=INITIAL_ENERGY):
+    def create_offspring(cls, parent1, parent2, mutation_rate=MUTATION_RATE, 
+                         mutation_scale=MUTATION_SCALE, energy=INITIAL_ENERGY):
         """
-        Create a new crater as an offspring of two parents with mutations
+        Create a new crater as an offspring of two parents with mutations using a custom genetic algorithm
         
         Args:
             parent1 (Crater): First parent crater
@@ -657,86 +656,32 @@ class Crater:
         Returns:
             Crater: New crater with combined brain from parents and mutations
         """
-        # Create a new brain by combining parents
-        if isinstance(parent1.brain, DeepNeuralNetwork):
-            # Deep neural network crossover and mutation
-            child_brain = copy.deepcopy(parent1.brain)
-            
-            # Crossover for deep network: Mix weights from both parents layer by layer
-            for i in range(len(child_brain.weights)):
-                for j in range(child_brain.weights[i].shape[0]):
-                    for k in range(child_brain.weights[i].shape[1]):
-                        if random.random() < 0.5:
-                            child_brain.weights[i][j, k] = parent2.brain.weights[i][j, k]
-            
-                # Mix biases
-                for j in range(child_brain.biases[i].shape[0]):
-                    if random.random() < 0.5:
-                        child_brain.biases[i][j, 0] = parent2.brain.biases[i][j, 0]
-            
-            # Apply mutations to weights
-            for i in range(len(child_brain.weights)):
-                for j in range(child_brain.weights[i].shape[0]):
-                    for k in range(child_brain.weights[i].shape[1]):
-                        if random.random() < mutation_rate:
-                            child_brain.weights[i][j, k] += random.gauss(0, 1) * mutation_scale
-                
-                # Apply mutations to biases
-                for j in range(child_brain.biases[i].shape[0]):
-                    if random.random() < mutation_rate:
-                        child_brain.biases[i][j, 0] += random.gauss(0, 1) * mutation_scale
+        # Get weights from both parents' brains
+        parent1_weights = np.array(parent1.brain.get_weights())
+        parent2_weights = np.array(parent2.brain.get_weights())
         
-        else:
-            # Simple neural network (original code)
-            child_brain = copy.deepcopy(parent1.brain)
-            
-            # Crossover: Mix weights from both parents (50/50 chance for each weight)
-            # Input to hidden weights
-            for i in range(child_brain.weights_ih.shape[0]):
-                for j in range(child_brain.weights_ih.shape[1]):
-                    if random.random() < 0.5:
-                        child_brain.weights_ih[i, j] = parent2.brain.weights_ih[i, j]
-            
-            # Hidden biases
-            for i in range(child_brain.bias_h.shape[0]):
-                if random.random() < 0.5:
-                    child_brain.bias_h[i, 0] = parent2.brain.bias_h[i, 0]
-            
-            # Hidden to output weights
-            for i in range(child_brain.weights_ho.shape[0]):
-                for j in range(child_brain.weights_ho.shape[1]):
-                    if random.random() < 0.5:
-                        child_brain.weights_ho[i, j] = parent2.brain.weights_ho[i, j]
-            
-            # Output biases
-            for i in range(child_brain.bias_o.shape[0]):
-                if random.random() < 0.5:
-                    child_brain.bias_o[i, 0] = parent2.brain.bias_o[i, 0]
-            
-            # Apply mutations
-            # Input to hidden weights
-            for i in range(child_brain.weights_ih.shape[0]):
-                for j in range(child_brain.weights_ih.shape[1]):
-                    if random.random() < mutation_rate:
-                        child_brain.weights_ih[i, j] += random.gauss(0, 1) * mutation_scale
-            
-            # Hidden biases
-            for i in range(child_brain.bias_h.shape[0]):
-                if random.random() < mutation_rate:
-                    child_brain.bias_h[i, 0] += random.gauss(0, 1) * mutation_scale
-            
-            # Hidden to output weights
-            for i in range(child_brain.weights_ho.shape[0]):
-                for j in range(child_brain.weights_ho.shape[1]):
-                    if random.random() < mutation_rate:
-                        child_brain.weights_ho[i, j] += random.gauss(0, 1) * mutation_scale
-            
-            # Output biases
-            for i in range(child_brain.bias_o.shape[0]):
-                if random.random() < mutation_rate:
-                    child_brain.bias_o[i, 0] += random.gauss(0, 1) * mutation_scale
+        # Perform uniform crossover (50/50 chance from each parent for each gene)
+        child_weights = np.zeros_like(parent1_weights)
+        for i in range(len(parent1_weights)):
+            if random.random() < 0.5:
+                child_weights[i] = parent1_weights[i]
+            else:
+                child_weights[i] = parent2_weights[i]
         
-        # Use position of one of the parents (randomly choose which one)
+        # Apply mutations
+        for i in range(len(child_weights)):
+            if random.random() < mutation_rate:
+                child_weights[i] += random.gauss(0, 1) * mutation_scale
+        
+        # Create a new brain with the same architecture but the evolved weights
+        child_brain = PyGADNeuralNetwork(
+            input_size=parent1.brain.input_size,
+            hidden_layers=parent1.brain.hidden_layers,
+            output_size=parent1.brain.output_size,
+            weights=child_weights
+        )
+        
+        # Use position of one of the parents
         parent_pos = parent1 if random.random() < 0.5 else parent2
         
         # Create a new crater with the combined brain at parent's position
