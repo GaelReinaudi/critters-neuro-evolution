@@ -27,7 +27,8 @@ AGE_MATURE = 5000    # Frames until considered elder
 # Simulation parameters
 NUM_CRATERS = 200
 NUM_SENSORS = 8  # Number of sensor rays
-SENSOR_RANGE = 100  # How far sensors can detect
+SENSOR_RANGE = 400  # How far sensors can detect
+WALL_DETECTION_RANGE = 150  # Shorter range specifically for wall detection
 NUM_FOOD_PELLETS = 500  # Number of food pellets
 FOOD_SPAWN_INTERVAL = 60  # Frames between food spawning attempts
 
@@ -62,6 +63,7 @@ CELL_SIZE = 120  # Size of each spatial hash cell (should match DISTANCE_CUTOFF)
 BATCH_PROCESSING = True  # Process entities in batches for better cache locality
 SENSOR_UPDATE_FRAMES = 5  # Update sensors every N frames (higher = more performance, less accuracy)
 DISTANCE_CUTOFF = 120  # Maximum distance to check for interactions (lower = better performance)
+FOOD_DETECTION_RANGE = 350  # Maximum distance to detect food (higher than general DISTANCE_CUTOFF)
 PRECOMPUTE_ANGLES = True  # Precompute sin/cos values for common angles
 SKIP_FRAMES_WHEN_LAGGING = True  # Skip update frames if framerate is too low
 USE_SENSOR_CACHING = True  # Cache sensor readings between updates

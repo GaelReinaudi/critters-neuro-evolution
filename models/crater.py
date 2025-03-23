@@ -16,7 +16,8 @@ from craters.config import (
     YOUNG_COLOR, ADULT_COLOR, MATURE_COLOR, ELDER_COLOR,
     AGE_YOUNG, AGE_ADULT, AGE_MATURE, SENSOR_UPDATE_FRAMES,
     DISTANCE_CUTOFF, PRECOMPUTE_ANGLES, USE_DEEP_NETWORK,
-    NETWORK_HIDDEN_LAYERS, NETWORK_ACTIVATION
+    NETWORK_HIDDEN_LAYERS, NETWORK_ACTIVATION, FOOD_DETECTION_RANGE,
+    WALL_DETECTION_RANGE
 )
 from craters.models.neural_network import SimpleNeuralNetwork, DeepNeuralNetwork
 
@@ -170,7 +171,7 @@ class Crater:
             else:
                 angle = self.rotation + (i * (2 * math.pi / NUM_SENSORS))
             
-            # Wall distance
+            # Wall distance (limited to WALL_DETECTION_RANGE but normalized to SENSOR_RANGE)
             wall_distance = self.get_wall_distance(angle)
             wall_reading = min(wall_distance / SENSOR_RANGE, 1.0)
             self.sensor_readings.append(wall_reading)
@@ -234,8 +235,8 @@ class Crater:
             if d > 0
         )
         
-        # Limit to sensor range
-        return min(wall_dist, SENSOR_RANGE)
+        # Limit to wall detection range (shorter than general sensor range)
+        return min(wall_dist, WALL_DETECTION_RANGE)
     
     def get_crater_info(self, angle, craters):
         """
@@ -363,7 +364,8 @@ class Crater:
             distance_squared = dx*dx + dy*dy
             
             # Skip if food is definitely too far away
-            cutoff_squared = (DISTANCE_CUTOFF + food.size) ** 2
+            # Use FOOD_DETECTION_RANGE instead of DISTANCE_CUTOFF for longer food detection
+            cutoff_squared = (FOOD_DETECTION_RANGE + food.size) ** 2
             if distance_squared > cutoff_squared:
                 continue
             
