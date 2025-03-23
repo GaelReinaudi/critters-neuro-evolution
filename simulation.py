@@ -269,32 +269,70 @@ class CraterSimulation:
         """Toggle the visibility of sensor rays"""
         self.show_sensors = not self.show_sensors
         
-    def force_mating(self, percentage=0.2):
+    def force_mating(self, percentage=0.5):
         """
-        Force a percentage of the highest-energy craters to enter mating mode
+        Force immediate mating of a percentage of craters, creating offspring instantly
         
         Args:
-            percentage (float): Percentage (0.0-1.0) of craters to put in mating mode
+            percentage (float): Percentage (0.0-1.0) of craters to mate
         """
-        if not self.craters:
+        if not self.craters or len(self.craters) < 2:
             return
             
         # Sort craters by energy (highest first)
         sorted_craters = sorted(self.craters, key=lambda c: c.energy, reverse=True)
         
-        # Calculate how many craters to put in mating mode (at least 2 for pairing)
+        # Calculate how many craters to mate (must be even, at least 2)
         num_to_mate = max(2, int(len(sorted_craters) * percentage))
-        
+        # Ensure it's an even number for pairing
+        if num_to_mate % 2 != 0:
+            num_to_mate -= 1
+            
         # Get top energy craters
         top_craters = sorted_craters[:num_to_mate]
         
         # Shuffle to create random pairings
         random.shuffle(top_craters)
         
-        # Force them into mating mode
-        for crater in top_craters:
-            crater.is_mating = True
-            crater.mating_timer = MATING_DURATION
+        # Create pairs and produce offspring
+        new_craters = []
+        for i in range(0, num_to_mate, 2):
+            if i+1 >= len(top_craters):
+                break  # Skip last unpaired crater if somehow we have an odd number
+                
+            parent1 = top_craters[i]
+            parent2 = top_craters[i+1]
+            
+            # Calculate total energy to distribute to offspring
+            total_offspring_energy = (parent1.energy / 2) + (parent2.energy / 2)
+            energy_per_offspring = total_offspring_energy / 2
+            
+            # Each parent loses half their energy
+            parent1.energy /= 2
+            parent2.energy /= 2
+            
+            # Reset mating state if they were in it
+            parent1.is_mating = False
+            parent2.is_mating = False
+            
+            # Create two offspring
+            for _ in range(2):
+                offspring = Crater.create_offspring(parent1, parent2, energy=energy_per_offspring)
+                offspring.font = self.font
+                new_craters.append(offspring)
+            
+            # Flash the pair with mating color briefly for visual feedback
+            parent1.is_mating = True
+            parent2.is_mating = True
+            parent1.mating_timer = 10  # Very short duration just for visual feedback
+            parent2.mating_timer = 10
+            
+            # Track mating statistics
+            self.mating_events += 1
+            self.births += 2
+            
+        # Add new craters
+        self.craters.extend(new_craters)
             
         # Print information about forced mating
-        print(f"Forced {num_to_mate} craters into mating mode (highest energy)") 
+        print(f"Forced {num_to_mate//2} pairs of craters to mate, creating {len(new_craters)} offspring") 
