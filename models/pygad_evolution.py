@@ -3,7 +3,8 @@ PyGAD integration for crater evolution
 """
 import random
 import numpy as np
-import pygad
+import pygad.crossover
+import pygad.mutation
 from craters.config import (
     MUTATION_RATE, MUTATION_SCALE, 
     USE_DEEP_NETWORK, NETWORK_HIDDEN_LAYERS
@@ -16,9 +17,7 @@ class GeneticAlgorithmManager:
     """
     def __init__(self):
         """Initialize the genetic algorithm manager"""
-        self.ga_instance = None
-        self.parents = None
-        self.offspring_size = None
+        pass
         
     def setup_genetic_algorithm(self, population_size, num_generations=1):
         """
@@ -28,62 +27,9 @@ class GeneticAlgorithmManager:
             population_size (int): Size of the population
             num_generations (int): Number of generations to evolve
         """
-        if USE_DEEP_NETWORK:
-            # For deep networks, work with weights and biases as flattened arrays
-            input_size = 5 * 8 + 1  # 8 sensors * 5 readings per sensor + energy
-            output_size = 3  # forward, reverse, rotation
-            
-            # Calculate initial dimensions based on NETWORK_HIDDEN_LAYERS
-            layer_dimensions = [input_size] + NETWORK_HIDDEN_LAYERS + [output_size]
-            
-            # Define GA parameters
-            self.ga_instance = pygad.GA(
-                num_generations=num_generations,
-                num_parents_mating=2,  # Always mate 2 parents
-                sol_per_pop=population_size,
-                num_genes=None,  # Will be determined dynamically for each network
-                gene_type=float,
-                init_range_low=-1.0,
-                init_range_high=1.0,
-                parent_selection_type="tournament",
-                K_tournament=3,
-                crossover_type="single_point",
-                mutation_type="random",
-                mutation_percent_genes=MUTATION_RATE * 100,  # Convert to percentage
-                mutation_by_replacement=False,
-                random_mutation_min_val=-MUTATION_SCALE,
-                random_mutation_max_val=MUTATION_SCALE,
-                keep_parents=0,  # No elitism
-                suppress_warnings=True
-            )
-        else:
-            # For simple networks, similar setup with different dimensions
-            input_size = 5 * 8 + 1
-            hidden_size = 12
-            output_size = 3
-            
-            num_weights = (input_size * hidden_size) + hidden_size + (hidden_size * output_size) + output_size
-            
-            self.ga_instance = pygad.GA(
-                num_generations=num_generations,
-                num_parents_mating=2,
-                sol_per_pop=population_size,
-                num_genes=num_weights,
-                gene_type=float,
-                init_range_low=-1.0,
-                init_range_high=1.0,
-                parent_selection_type="tournament",
-                K_tournament=3,
-                crossover_type="single_point",
-                mutation_type="random",
-                mutation_percent_genes=MUTATION_RATE * 100,
-                mutation_by_replacement=False,
-                random_mutation_min_val=-MUTATION_SCALE,
-                random_mutation_max_val=MUTATION_SCALE,
-                keep_parents=0,
-                suppress_warnings=True
-            )
-    
+        # No setup needed when using only PyGAD's crossover and mutation functions directly
+        pass
+
     def create_offspring(self, parent1, parent2, energy=None):
         """
         Create offspring by mating two parents using PyGAD
@@ -103,24 +49,27 @@ class GeneticAlgorithmManager:
         # Create parents array for PyGAD
         parents = np.array([parent1_chromosome, parent2_chromosome])
         
-        # Create offspring using PyGAD functions
+        # Use PyGAD's crossover function directly without needing the full GA instance
         if USE_DEEP_NETWORK:
-            # For deep networks, we need to handle the crossover and mutation ourselves
-            # since networks might have different structures
+            # For deep networks, use single point crossover
             offspring = pygad.crossover.single_point_crossover(
                 parents,
                 offspring_size=(1, len(parent1_chromosome))
             )[0]
             
-            # Apply mutation
-            for i in range(len(offspring)):
-                if random.random() < MUTATION_RATE:
-                    offspring[i] += random.uniform(-MUTATION_SCALE, MUTATION_SCALE)
+            # Apply mutation using PyGAD's mutation function
+            offspring = pygad.mutation.random_mutation(
+                offspring=offspring,
+                mutation_percent_genes=MUTATION_RATE * 100, 
+                mutation_by_replacement=False,
+                random_mutation_min_val=-MUTATION_SCALE,
+                random_mutation_max_val=MUTATION_SCALE
+            )
             
             # Convert chromosome back to network
             child_brain = self._chromosome_to_network(offspring, parent1.brain)
         else:
-            # For simple networks, PyGAD can handle everything
+            # For simple networks, same approach
             offspring = pygad.crossover.single_point_crossover(
                 parents,
                 offspring_size=(1, len(parent1_chromosome))
@@ -130,6 +79,7 @@ class GeneticAlgorithmManager:
             offspring = pygad.mutation.random_mutation(
                 offspring=offspring,
                 mutation_percent_genes=MUTATION_RATE * 100, 
+                mutation_by_replacement=False,
                 random_mutation_min_val=-MUTATION_SCALE,
                 random_mutation_max_val=MUTATION_SCALE
             )
