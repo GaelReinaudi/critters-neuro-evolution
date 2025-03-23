@@ -789,20 +789,8 @@ class Crater:
         # Draw crater triangle
         pygame.draw.polygon(surface, crater_color, self.points)
         
-        # If mating, draw a magenta border with pulsing effect to indicate energy drain
-        if self.is_mating:
-            # Calculate pulsing effect based on mating timer (pulsing increases as timer decreases)
-            pulse_intensity = 1.5 + 0.5 * (1 - (self.mating_timer / MATING_DURATION))
-            border_width = max(2, int(3 * pulse_intensity))
-            pygame.draw.polygon(surface, MATING_COLOR, self.points, width=border_width)
-            
-            # Add small text indicator showing 2x energy consumption
-            if self.font:
-                indicator_text = self.font.render("2x", True, MATING_COLOR)
-                surface.blit(indicator_text, (self.x + self.size + 5, self.y - 15))
-        
         # If inactive and being penalized, draw a dark red border
-        elif self.inactive_frames > self.inactivity_threshold:
+        if self.inactive_frames > self.inactivity_threshold:
             # Make border darker red as inactivity increases
             intensity = min(255, 100 + (self.inactive_frames - self.inactivity_threshold) // 2)
             inactive_color = (intensity, 0, 0)  # Dark red
@@ -810,7 +798,19 @@ class Crater:
         
         # Draw direction indicator (a small dot at the front)
         front_x, front_y = self.points[0]  # First point is the front
-        pygame.draw.circle(surface, DIRECTION_COLOR, (int(front_x), int(front_y)), 3)
+        
+        # Use magenta direction indicator if mating, otherwise use the default cyan
+        direction_color = MATING_COLOR if self.is_mating else DIRECTION_COLOR
+        
+        # If mating, make the indicator larger and pulsing
+        if self.is_mating:
+            # Calculate pulsing effect based on mating timer
+            pulse_intensity = 1.5 + 0.5 * (1 - (self.mating_timer / MATING_DURATION))
+            indicator_size = max(4, int(5 * pulse_intensity))
+        else:
+            indicator_size = 3
+            
+        pygame.draw.circle(surface, direction_color, (int(front_x), int(front_y)), indicator_size)
         
         # Display energy level
         if self.energy > 0 and self.font:
