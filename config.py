@@ -27,7 +27,7 @@ AGE_MATURE = 5000    # Frames until considered elder
 # Simulation parameters
 NUM_CRATERS = 200
 NUM_SENSORS = 8  # Reduced number of sensors for better performance
-SENSOR_RANGE = 120  # Maximum detection range for sensors
+SENSOR_RANGE = 150  # Maximum detection range for sensors (increased)
 WALL_DETECTION_RANGE = 50  # Wall detection range
 NUM_FOOD_PELLETS = 500  # Number of food pellets
 FOOD_SPAWN_INTERVAL = 10  # Frames between food spawning attempts
@@ -59,11 +59,11 @@ NETWORK_ACTIVATION = 'relu'  # Activation function: 'relu', 'leaky_relu', 'tanh'
 
 # Optimization settings
 USE_SPATIAL_HASH = True  # Use spatial partitioning for faster collision detection
-CELL_SIZE = 120  # Size of each spatial hash cell
+CELL_SIZE = 150  # Size of each spatial hash cell (match the DISTANCE_CUTOFF)
 BATCH_PROCESSING = True  # Process entities in batches for better cache locality
-SENSOR_UPDATE_FRAMES = 3  # Update sensors less frequently for better performance
-DISTANCE_CUTOFF = 120  # Distance to check for interactions
-FOOD_DETECTION_RANGE = 160  # Longer range for food detection (higher than DISTANCE_CUTOFF)
+SENSOR_UPDATE_FRAMES = 1  # Update sensors less frequently for better performance
+DISTANCE_CUTOFF = 150  # Distance to check for interactions (increased)
+FOOD_DETECTION_RANGE = 170  # Longer range for food detection
 PRECOMPUTE_ANGLES = True  # Precompute sin/cos values for common angles
 SKIP_FRAMES_WHEN_LAGGING = True  # Skip update frames if framerate is too low
 USE_SENSOR_CACHING = True  # Cache sensor readings between updates
@@ -73,3 +73,9 @@ REDUCE_DRAW_DETAIL = True  # Reduce drawing detail when many entities are visibl
 # Display settings
 FONT_SIZE = 18  # Size for energy display
 FPS = 60  # Frames per second 
+
+# GPU Acceleration settings
+USE_GPU_ACCELERATION = True  # Enable hardware acceleration features
+USE_DOUBLE_BUFFER = True     # Use double buffering for smoother rendering
+VSYNC_ENABLED = True         # Sync with monitor refresh rate to prevent screen tearing
+MINIMIZE_TEXTURE_SWAPS = True  # Minimize texture changes during rendering 
