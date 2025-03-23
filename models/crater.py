@@ -31,14 +31,14 @@ class Crater:
     """
     Represents a crater entity with neural network-based behavior
     """
-    def __init__(self, x=None, y=None, size=20, font=None, brain=None):
+    def __init__(self, x=None, y=None, size=40, font=None, brain=None):
         """
         Initialize crater with random or specified attributes
         
         Args:
             x (float, optional): X coordinate. If None, a random position is used.
             y (float, optional): Y coordinate. If None, a random position is used.
-            size (int, optional): Crater size. Default is 20 for all craters.
+            size (int, optional): Crater size. Default is 40 for all craters (doubled from 20).
             font: Pygame font for energy display
             brain: Neural network to use. If None, a new one is created.
         """
@@ -441,13 +441,16 @@ class Crater:
             if not food.active:
                 continue
                 
-            # Distance to food
+            # Distance to food using faster square distance calculation
             dx = food.x - self.x
             dy = food.y - self.y
-            distance = math.sqrt(dx*dx + dy*dy)
+            distance_squared = dx*dx + dy*dy
+            
+            # Collision threshold squared (avoids costly square root)
+            collision_threshold_squared = (self.size + food.size) * (self.size + food.size)
             
             # If collision
-            if distance < self.size + food.size:
+            if distance_squared < collision_threshold_squared:
                 # Absorb energy
                 self.energy = min(self.max_energy, self.energy + food.energy)
                 food.active = False
@@ -474,13 +477,17 @@ class Crater:
             if other is self or not isinstance(other, Crater) or not hasattr(other, 'is_mating') or not other.is_mating:
                 continue
                 
-            # Calculate distance
+            # Calculate distance using faster square distance
             dx = other.x - self.x
             dy = other.y - self.y
-            distance = math.sqrt(dx*dx + dy*dy)
+            distance_squared = dx*dx + dy*dy
+            
+            # Mating threshold squared (includes +10 extra units for easier mating)
+            mating_threshold = self.size + other.size + 10
+            mating_threshold_squared = mating_threshold * mating_threshold
             
             # If close enough
-            if distance < self.size + other.size + 10:
+            if distance_squared < mating_threshold_squared:
                 return other
                 
         return None
