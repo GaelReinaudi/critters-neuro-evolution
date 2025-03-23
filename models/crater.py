@@ -645,7 +645,7 @@ class Crater:
     @classmethod
     def create_offspring(cls, parent1, parent2, mutation_rate=MUTATION_RATE, mutation_scale=MUTATION_SCALE, energy=INITIAL_ENERGY):
         """
-        Create a new crater as an offspring of two parents with mutations
+        Create a new crater as an offspring of two parents with mutations using PyGAD
         
         Args:
             parent1 (Crater): First parent crater
@@ -657,84 +657,14 @@ class Crater:
         Returns:
             Crater: New crater with combined brain from parents and mutations
         """
-        # Create a new brain by combining parents
-        if isinstance(parent1.brain, DeepNeuralNetwork):
-            # Deep neural network crossover and mutation
-            child_brain = copy.deepcopy(parent1.brain)
-            
-            # Crossover for deep network: Mix weights from both parents layer by layer
-            for i in range(len(child_brain.weights)):
-                for j in range(child_brain.weights[i].shape[0]):
-                    for k in range(child_brain.weights[i].shape[1]):
-                        if random.random() < 0.5:
-                            child_brain.weights[i][j, k] = parent2.brain.weights[i][j, k]
-            
-                # Mix biases
-                for j in range(child_brain.biases[i].shape[0]):
-                    if random.random() < 0.5:
-                        child_brain.biases[i][j, 0] = parent2.brain.biases[i][j, 0]
-            
-            # Apply mutations to weights
-            for i in range(len(child_brain.weights)):
-                for j in range(child_brain.weights[i].shape[0]):
-                    for k in range(child_brain.weights[i].shape[1]):
-                        if random.random() < mutation_rate:
-                            child_brain.weights[i][j, k] += random.gauss(0, 1) * mutation_scale
-                
-                # Apply mutations to biases
-                for j in range(child_brain.biases[i].shape[0]):
-                    if random.random() < mutation_rate:
-                        child_brain.biases[i][j, 0] += random.gauss(0, 1) * mutation_scale
+        # Use PyGAD for genetic evolution
+        from craters.models.pygad_evolution import GeneticAlgorithmManager
         
-        else:
-            # Simple neural network (original code)
-            child_brain = copy.deepcopy(parent1.brain)
-            
-            # Crossover: Mix weights from both parents (50/50 chance for each weight)
-            # Input to hidden weights
-            for i in range(child_brain.weights_ih.shape[0]):
-                for j in range(child_brain.weights_ih.shape[1]):
-                    if random.random() < 0.5:
-                        child_brain.weights_ih[i, j] = parent2.brain.weights_ih[i, j]
-            
-            # Hidden biases
-            for i in range(child_brain.bias_h.shape[0]):
-                if random.random() < 0.5:
-                    child_brain.bias_h[i, 0] = parent2.brain.bias_h[i, 0]
-            
-            # Hidden to output weights
-            for i in range(child_brain.weights_ho.shape[0]):
-                for j in range(child_brain.weights_ho.shape[1]):
-                    if random.random() < 0.5:
-                        child_brain.weights_ho[i, j] = parent2.brain.weights_ho[i, j]
-            
-            # Output biases
-            for i in range(child_brain.bias_o.shape[0]):
-                if random.random() < 0.5:
-                    child_brain.bias_o[i, 0] = parent2.brain.bias_o[i, 0]
-            
-            # Apply mutations
-            # Input to hidden weights
-            for i in range(child_brain.weights_ih.shape[0]):
-                for j in range(child_brain.weights_ih.shape[1]):
-                    if random.random() < mutation_rate:
-                        child_brain.weights_ih[i, j] += random.gauss(0, 1) * mutation_scale
-            
-            # Hidden biases
-            for i in range(child_brain.bias_h.shape[0]):
-                if random.random() < mutation_rate:
-                    child_brain.bias_h[i, 0] += random.gauss(0, 1) * mutation_scale
-            
-            # Hidden to output weights
-            for i in range(child_brain.weights_ho.shape[0]):
-                for j in range(child_brain.weights_ho.shape[1]):
-                    if random.random() < mutation_rate:
-                        child_brain.weights_ho[i, j] += random.gauss(0, 1) * mutation_scale
-            
-            # Output biases
-            for i in range(child_brain.bias_o.shape[0]):
-                if random.random() < mutation_rate:
-                    child_brain.bias_o[i, 0] += random.gauss(0, 1) * mutation_scale
+        # Create genetic algorithm manager
+        ga_manager = GeneticAlgorithmManager()
+        
+        # Create offspring using PyGAD
+        child_brain, generation_depth = ga_manager.create_offspring(parent1, parent2)
         
         # Use position of one of the parents (randomly choose which one)
         parent_pos = parent1 if random.random() < 0.5 else parent2
@@ -744,7 +674,7 @@ class Crater:
         offspring.energy = energy  # Set the offspring's initial energy
         
         # Set generation depth based on parents (use max of parents + 1)
-        offspring.generation_depth = max(parent1.generation_depth, parent2.generation_depth) + 1
+        offspring.generation_depth = generation_depth
         
         return offspring
     

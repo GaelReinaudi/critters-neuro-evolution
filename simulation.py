@@ -11,7 +11,7 @@ from craters.config import (
     DISTANCE_CUTOFF, USE_SPATIAL_HASH,
     BATCH_PROCESSING, SKIP_FRAMES_WHEN_LAGGING,
     FPS, MATING_DURATION, CELL_SIZE,
-    FOOD_DETECTION_RANGE
+    FOOD_DETECTION_RANGE, WIDTH, HEIGHT
 )
 from craters.models.crater import Crater
 from craters.models.food import Food
@@ -21,36 +21,44 @@ class CraterSimulation:
     """
     Main simulation class that manages all entities and updates
     """
-    def __init__(self, num_craters=NUM_CRATERS, num_food=NUM_FOOD_PELLETS, font=None):
+    def __init__(self, font=None):
         """
-        Initialize the simulation with craters and food
+        Initialize simulation with craters, food, and other settings
         
         Args:
-            num_craters (int): Number of craters to create
-            num_food (int): Number of food pellets to create
             font: Pygame font for text display
         """
         self.font = font
-        self.craters = [Crater(font=font) for _ in range(num_craters)]
-        self.food_pellets = [Food() for _ in range(num_food)]
-        self.show_sensors = True  # Toggle for sensor visualization
-        self.food_spawn_timer = 0
-        self.food_spawn_interval = FOOD_SPAWN_INTERVAL
-        
-        # Track statistics
-        self.generation = 1
-        self.mating_events = 0
-        self.births = 0
+        self.craters = []
+        self.food_pellets = []
+        self.spatial_hash = SpatialHash(CELL_SIZE) if USE_SPATIAL_HASH else None
         
         # Performance tracking
         self.frame_times = []
+        self.avg_frame_time = 0.0
         self.last_frame_time = time.time()
-        self.avg_frame_time = 0
-        self.skip_frame = False
         
-        # Spatial hash for efficient collision detection
-        if USE_SPATIAL_HASH:
-            self.spatial_hash = SpatialHash(cell_size=CELL_SIZE)
+        # Evolution tracking
+        self.generation = 0
+        self.mating_events = 0
+        self.births = 0
+        self.show_sensors = True  # Sensor visualization option
+        
+        # Initialize the PyGAD genetic algorithm manager
+        from craters.models.pygad_evolution import GeneticAlgorithmManager
+        self.ga_manager = GeneticAlgorithmManager()
+        self.ga_manager.setup_genetic_algorithm(NUM_CRATERS)
+        
+        # Initialize craters
+        for _ in range(NUM_CRATERS):
+            self.craters.append(Crater(font=self.font))
+            
+        # Initialize food pellets
+        for _ in range(NUM_FOOD_PELLETS):
+            self.food_pellets.append(Food(random.randint(0, WIDTH), random.randint(0, HEIGHT)))
+        
+        self.food_spawn_timer = 0
+        self.food_spawn_interval = FOOD_SPAWN_INTERVAL
     
     def _update_spatial_hash(self):
         """Update the spatial hash with current entity positions"""
@@ -86,126 +94,91 @@ class CraterSimulation:
             return [f for f in self.food_pellets if f.active]
     
     def update(self):
-        """
-        Update all entities in the simulation for one frame
-        """
-        # Performance tracking
-        current_time = time.time()
-        frame_duration = current_time - self.last_frame_time
-        self.last_frame_time = current_time
-        
-        # Keep track of last 60 frames
-        self.frame_times.append(frame_duration)
-        if len(self.frame_times) > 60:
-            self.frame_times.pop(0)
-        
-        # Calculate average frame time
-        self.avg_frame_time = sum(self.frame_times) / len(self.frame_times)
-        
-        # Skip updating if frame time is too high and skipping is enabled
-        if SKIP_FRAMES_WHEN_LAGGING:
-            target_frame_time = 1.0 / FPS
-            self.skip_frame = not self.skip_frame and self.avg_frame_time > target_frame_time * 1.5
+        """Update all entities and handle mating and evolution"""
+        # Skip frames if running too slow
+        if SKIP_FRAMES_WHEN_LAGGING and self.avg_frame_time > 1.0 / 30:
+            # Skip update if frame time is over 30 FPS (prioritize rendering)
             if self.skip_frame:
+                self.skip_frame = False
                 return
+            else:
+                self.skip_frame = True
+        
+        # Start timer
+        start_time = time.time()
+        
+        # Update food spawn timer
+        self.food_spawn_timer += 1
+        if self.food_spawn_timer >= self.food_spawn_interval:
+            self.food_spawn_timer = 0
+            
+            # Only spawn new food if there are less than max food pellets
+            active_pellets = sum(1 for f in self.food_pellets if f.active)
+            if active_pellets < NUM_FOOD_PELLETS:
+                # Add new food in random location
+                self.food_pellets.append(Food(random.randint(50, WIDTH-50), random.randint(50, HEIGHT-50)))
         
         # Update spatial hash if used
         if USE_SPATIAL_HASH:
             self._update_spatial_hash()
         
-        # Update craters and handle energy depletion
-        craters_to_remove = []
-        mating_pairs = []  # Track craters that are mating this frame
-        new_craters = []  # Track new craters born this frame
-        
-        # First pass: update all craters and check for mating
+        # Process craters in batches for better cache locality if enabled
         if BATCH_PROCESSING:
-            # Process craters in batches for better locality
-            batch_size = min(20, len(self.craters))
-            for i in range(0, len(self.craters), batch_size):
-                batch = self.craters[i:i+batch_size]
-                self._update_crater_batch(batch, craters_to_remove, mating_pairs, new_craters)
-        else:
-            # Update each crater individually
+            # Update all craters and track those that need to mate
+            mating_pairs = []
             for i, crater in enumerate(self.craters):
-                self._update_single_crater(i, crater, craters_to_remove, mating_pairs, new_craters)
-        
-        # Handle mating pairs
-        for i in range(0, len(mating_pairs), 2):
-            if i+1 < len(mating_pairs):  # Ensure we have a pair
-                parent1 = mating_pairs[i]
-                parent2 = mating_pairs[i+1]
+                # Skip if crater has no energy
+                if crater.energy <= 0:
+                    continue
+                    
+                # Update the crater and get mating partner if any
+                other_crater = crater.update(self.craters, self.food_pellets)
                 
-                # Calculate total energy to distribute to offspring
-                total_offspring_energy = (parent1.energy / 2) + (parent2.energy / 2)
-                energy_per_offspring = total_offspring_energy / 2
-                
-                # Each parent loses half their energy
-                parent1.energy /= 2
-                parent2.energy /= 2
-                
-                # Reset mating state
-                parent1.is_mating = False
-                parent2.is_mating = False
-                
-                # Create two offspring
-                for _ in range(2):
-                    offspring = Crater.create_offspring(parent1, parent2, energy=energy_per_offspring)
-                    offspring.font = self.font
-                    new_craters.append(offspring)
-                
-                # Track mating statistics
-                self.mating_events += 1
-                self.births += 2
-        
-        # Add new craters
-        self.craters.extend(new_craters)
-        
-        # Remove dead craters (in reverse order to avoid index issues)
-        for i in sorted(craters_to_remove, reverse=True):
-            del self.craters[i]
-        
-        # Count active food
-        active_food = sum(1 for food in self.food_pellets if food.active)
-        
-        # Spawn new food periodically
-        self.food_spawn_timer += 1
-        if self.food_spawn_timer >= self.food_spawn_interval:
-            if active_food < NUM_FOOD_PELLETS:
-                # Replace consumed food
-                for food in self.food_pellets:
-                    if not food.active:
-                        food.set_position()  # Generate new random position
-                        food.active = True
-                        break
-            self.food_spawn_timer = 0
-    
-    def _update_crater_batch(self, batch, craters_to_remove, mating_pairs, new_craters):
-        """Process a batch of craters for better cache locality"""
-        for i, crater in [(i, self.craters[i]) for i in range(len(self.craters)) if self.craters[i] in batch]:
-            self._update_single_crater(i, crater, craters_to_remove, mating_pairs, new_craters)
-    
-    def _update_single_crater(self, i, crater, craters_to_remove, mating_pairs, new_craters):
-        """Update a single crater and handle interactions"""
-        # Get nearby entities efficiently
-        nearby_craters = self.get_nearby_craters(crater)
-        nearby_food = self.get_nearby_food(crater)
-        
-        # Update crater (returns other crater if mating occurred)
-        other_crater = crater.update(nearby_craters, nearby_food)
-        
-        if other_crater and other_crater not in mating_pairs and crater not in mating_pairs:
-            mating_pairs.append(crater)
-            mating_pairs.append(other_crater)
-        
-        # Check if crater ran out of energy
-        if crater.energy <= 0:
-            # Mark for removal and create food pellet at its position
-            craters_to_remove.append(i)
-            # Create new orange food pellet at crater's position
-            new_food = Food(crater.x, crater.y, color=ORANGE_FOOD_COLOR)
-            self.food_pellets.append(new_food)
+                # If there's a mating partner, create offspring
+                if other_crater and (crater, other_crater) not in mating_pairs and (other_crater, crater) not in mating_pairs:
+                    mating_pairs.append((crater, other_crater))
             
+            # Process all mating after updates
+            for crater1, crater2 in mating_pairs:
+                self.mate_craters(crater1, crater2)
+        else:
+            # Original update logic without batching
+            # Update craters
+            for crater in self.craters:
+                if crater.energy <= 0:
+                    continue
+                    
+                # Check for mating
+                other_crater = crater.update(self.craters, self.food_pellets)
+                if other_crater:
+                    self.mate_craters(crater, other_crater)
+        
+        # Remove dead craters (energy <= 0) and create food in their place
+        for crater in list(self.craters):
+            if crater.energy <= 0:
+                # Create a food pellet at the crater's position
+                orange_food = Food(crater.x, crater.y, color=ORANGE_FOOD_COLOR, energy=crater.energy/2)
+                self.food_pellets.append(orange_food)
+                self.craters.remove(crater)
+        
+        # Update food pellets
+        for food in self.food_pellets:
+            food.update()
+        
+        # Remove inactive food pellets
+        self.food_pellets = [food for food in self.food_pellets if food.exists]
+        
+        # Calculate frame time and update average
+        end_time = time.time()
+        frame_time = end_time - start_time
+        
+        # Track frame times for rolling average (last 60 frames)
+        self.frame_times.append(frame_time)
+        if len(self.frame_times) > 60:
+            self.frame_times.pop(0)
+            
+        # Calculate average frame time
+        self.avg_frame_time = sum(self.frame_times) / len(self.frame_times)
     
     def draw(self, surface):
         """
@@ -355,4 +328,32 @@ class CraterSimulation:
         self.craters.extend(new_craters)
             
         # Print information about forced mating
-        print(f"Forced {num_to_mate//2} pairs of craters to mate, creating {len(new_craters)} offspring") 
+        print(f"Forced {num_to_mate//2} pairs of craters to mate, creating {len(new_craters)} offspring")
+
+    def mate_craters(self, crater1, crater2):
+        """
+        Create offspring from two parent craters and handle mating process
+        
+        Args:
+            crater1 (Crater): First parent crater
+            crater2 (Crater): Second parent crater
+        """
+        # Create offspring using PyGAD-based genetic evolution
+        offspring = Crater.create_offspring(crater1, crater2)
+        
+        # Add to craters list
+        self.craters.append(offspring)
+        
+        # Reduce energy of parents - reproduction costs energy
+        crater1.energy /= 2
+        crater2.energy /= 2
+        
+        # Reset mating state
+        crater1.is_mating = False
+        crater2.is_mating = False
+        
+        # Update stats
+        self.mating_events += 1
+        self.births += 1
+        
+        return offspring 
