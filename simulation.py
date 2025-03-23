@@ -10,7 +10,7 @@ from craters.config import (
     AGE_YOUNG, AGE_ADULT, AGE_MATURE,
     DISTANCE_CUTOFF, USE_SPATIAL_HASH,
     BATCH_PROCESSING, SKIP_FRAMES_WHEN_LAGGING,
-    FPS
+    FPS, MATING_DURATION
 )
 from craters.models.crater import Crater
 from craters.models.food import Food
@@ -236,6 +236,10 @@ class CraterSimulation:
             mature_craters = sum(1 for crater in self.craters if AGE_ADULT <= crater.age < AGE_MATURE)
             elder_craters = sum(1 for crater in self.craters if crater.age >= AGE_MATURE)
             
+            # Count inactive craters
+            inactive_craters = sum(1 for crater in self.craters if crater.inactive_frames > crater.inactivity_threshold)
+            avg_inactive_frames = sum(crater.inactive_frames for crater in self.craters) / len(self.craters) if self.craters else 0
+            
             # Basic info
             info_text = f"Food: {active_food} | Craters: {active_craters}"
             text_surface = self.font.render(info_text, True, TEXT_COLOR)
@@ -251,11 +255,46 @@ class CraterSimulation:
             age_surface = self.font.render(age_info, True, TEXT_COLOR)
             surface.blit(age_surface, (10, 50))
             
+            # Inactivity info
+            inactive_info = f"Inactive Craters: {inactive_craters} | Avg Inactive Frames: {int(avg_inactive_frames)}"
+            inactive_surface = self.font.render(inactive_info, True, TEXT_COLOR)
+            surface.blit(inactive_surface, (10, 70))
+            
             # Performance info
             perf_info = f"Frame Time: {self.avg_frame_time*1000:.1f}ms | FPS: {1.0/max(self.avg_frame_time, 0.001):.1f}"
             perf_surface = self.font.render(perf_info, True, TEXT_COLOR)
-            surface.blit(perf_surface, (10, 70))
+            surface.blit(perf_surface, (10, 90))
     
     def toggle_sensors(self):
         """Toggle the visibility of sensor rays"""
-        self.show_sensors = not self.show_sensors 
+        self.show_sensors = not self.show_sensors
+        
+    def force_mating(self, percentage=0.2):
+        """
+        Force a percentage of the highest-energy craters to enter mating mode
+        
+        Args:
+            percentage (float): Percentage (0.0-1.0) of craters to put in mating mode
+        """
+        if not self.craters:
+            return
+            
+        # Sort craters by energy (highest first)
+        sorted_craters = sorted(self.craters, key=lambda c: c.energy, reverse=True)
+        
+        # Calculate how many craters to put in mating mode (at least 2 for pairing)
+        num_to_mate = max(2, int(len(sorted_craters) * percentage))
+        
+        # Get top energy craters
+        top_craters = sorted_craters[:num_to_mate]
+        
+        # Shuffle to create random pairings
+        random.shuffle(top_craters)
+        
+        # Force them into mating mode
+        for crater in top_craters:
+            crater.is_mating = True
+            crater.mating_timer = MATING_DURATION
+            
+        # Print information about forced mating
+        print(f"Forced {num_to_mate} craters into mating mode (highest energy)") 

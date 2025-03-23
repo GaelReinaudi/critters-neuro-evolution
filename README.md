@@ -14,7 +14,7 @@ python -m craters.main
 
 ## Controls
 - **S key**: Toggle sensor visualization (on by default)
-- **E key**: Manually trigger evolution
+- **E key**: Force top 20% of highest-energy craters to enter mating mode
 - **ESC key**: Quit the simulation
 
 ## Features

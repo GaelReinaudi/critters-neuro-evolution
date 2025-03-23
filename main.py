@@ -55,8 +55,8 @@ def main():
                 elif event.key == pygame.K_e:
                     # Manually trigger evolution
                     print("Evolution manually triggered")
-                    # Uncomment when evolution feature is implemented
-                    # simulation.evolve_population()
+                    # Force top energy craters to mate
+                    simulation.force_mating(percentage=0.2)
                 elif event.key == pygame.K_ESCAPE:
                     # Quit simulation
                     running = False
