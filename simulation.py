@@ -10,7 +10,8 @@ from craters.config import (
     AGE_YOUNG, AGE_ADULT, AGE_MATURE,
     DISTANCE_CUTOFF, USE_SPATIAL_HASH,
     BATCH_PROCESSING, SKIP_FRAMES_WHEN_LAGGING,
-    FPS, MATING_DURATION, CELL_SIZE
+    FPS, MATING_DURATION, CELL_SIZE,
+    FOOD_DETECTION_RANGE
 )
 from craters.models.crater import Crater
 from craters.models.food import Food
@@ -77,7 +78,8 @@ class CraterSimulation:
     def get_nearby_food(self, crater):
         """Get active food pellets near the given crater efficiently"""
         if USE_SPATIAL_HASH:
-            nearby = self.spatial_hash.get_nearby_entities(crater, DISTANCE_CUTOFF)
+            # Use the longer FOOD_DETECTION_RANGE for food detection
+            nearby = self.spatial_hash.get_nearby_entities(crater, FOOD_DETECTION_RANGE)
             return [f for f in nearby if isinstance(f, Food) and f.active]
         else:
             # Traditional approach
@@ -218,7 +220,8 @@ class CraterSimulation:
         
         # Draw craters
         for crater in self.craters:
-            crater.draw(surface, self.show_sensors)
+            if crater.energy > 0:
+                crater.draw(surface, self.show_sensors, self.craters)
         
         # Display information
         if self.font:
@@ -246,7 +249,7 @@ class CraterSimulation:
             surface.blit(text_surface, (10, 10))
             
             # Mating info
-            mating_info = f"Mating Craters: {mating_craters} | Mating Events: {self.mating_events} | Births: {self.births}"
+            mating_info = f"Generation: {self.generation} | Mating Craters: {mating_craters} | Mating Events: {self.mating_events} | Births: {self.births}"
             mating_surface = self.font.render(mating_info, True, TEXT_COLOR)
             surface.blit(mating_surface, (10, 30))
             
@@ -271,31 +274,34 @@ class CraterSimulation:
         
     def force_mating(self, percentage=0.5):
         """
-        Force immediate mating of a percentage of craters, creating offspring instantly
+        Force the top percentage of highest-energy craters to mate
         
         Args:
-            percentage (float): Percentage (0.0-1.0) of craters to mate
+            percentage (float): Percentage of population to mate (0.0-1.0)
         """
-        if not self.craters or len(self.craters) < 2:
+        # Get active craters and sort by energy
+        active_craters = [crater for crater in self.craters if crater.energy > 0]
+        if len(active_craters) < 2:
             return
             
-        # Sort craters by energy (highest first)
-        sorted_craters = sorted(self.craters, key=lambda c: c.energy, reverse=True)
+        # Sort by energy (highest first)
+        top_craters = sorted(active_craters, key=lambda c: c.energy, reverse=True)
         
-        # Calculate how many craters to mate (must be even, at least 2)
-        num_to_mate = max(2, int(len(sorted_craters) * percentage))
-        # Ensure it's an even number for pairing
-        if num_to_mate % 2 != 0:
-            num_to_mate -= 1
-            
-        # Get top energy craters
-        top_craters = sorted_craters[:num_to_mate]
+        # Select top percentage
+        num_to_mate = max(2, int(len(top_craters) * percentage))
+        num_to_mate = num_to_mate if num_to_mate % 2 == 0 else num_to_mate - 1  # Ensure even number
+        top_craters = top_craters[:num_to_mate]
         
-        # Shuffle to create random pairings
+        # Randomize pairings to avoid inbreeding
         random.shuffle(top_craters)
         
-        # Create pairs and produce offspring
+        # Create offspring
         new_craters = []
+        
+        # Increment generation when evolution occurs
+        self.generation += 1
+        
+        # Create pairs and produce offspring
         for i in range(0, num_to_mate, 2):
             if i+1 >= len(top_craters):
                 break  # Skip last unpaired crater if somehow we have an odd number
