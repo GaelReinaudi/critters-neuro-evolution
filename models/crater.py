@@ -49,6 +49,9 @@ class Crater:
         self.rotation = random.uniform(0, 2 * math.pi)
         self.font = font
         
+        # Track evolutionary depth/generation
+        self.generation_depth = 0  # First generation (no ancestors)
+        
         # Movement properties
         self.max_speed = MAX_SPEED
         self.speed = 0
@@ -739,6 +742,9 @@ class Crater:
         # Create a new crater with the combined brain at parent's position
         offspring = cls(x=parent_pos.x, y=parent_pos.y, brain=child_brain, font=parent1.font)
         offspring.energy = energy  # Set the offspring's initial energy
+        
+        # Set generation depth based on parents (use max of parents + 1)
+        offspring.generation_depth = max(parent1.generation_depth, parent2.generation_depth) + 1
         
         return offspring
     

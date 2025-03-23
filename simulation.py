@@ -239,6 +239,15 @@ class CraterSimulation:
             mature_craters = sum(1 for crater in self.craters if AGE_ADULT <= crater.age < AGE_MATURE)
             elder_craters = sum(1 for crater in self.craters if crater.age >= AGE_MATURE)
             
+            # Calculate generation depth statistics
+            if self.craters:
+                generation_depths = [crater.generation_depth for crater in self.craters]
+                avg_generation = sum(generation_depths) / len(generation_depths)
+                max_generation = max(generation_depths)
+                min_generation = min(generation_depths)
+            else:
+                avg_generation = max_generation = min_generation = 0
+            
             # Count inactive craters
             inactive_craters = sum(1 for crater in self.craters if crater.inactive_frames > crater.inactivity_threshold)
             avg_inactive_frames = sum(crater.inactive_frames for crater in self.craters) / len(self.craters) if self.craters else 0
@@ -248,25 +257,30 @@ class CraterSimulation:
             text_surface = self.font.render(info_text, True, TEXT_COLOR)
             surface.blit(text_surface, (10, 10))
             
+            # Generation stats info
+            generation_info = f"Generation Stats - Avg: {avg_generation:.1f} | Max: {max_generation} | Min: {min_generation}"
+            generation_surface = self.font.render(generation_info, True, TEXT_COLOR)
+            surface.blit(generation_surface, (10, 30))
+            
             # Mating info
-            mating_info = f"Generation: {self.generation} | Mating Craters: {mating_craters} | Mating Events: {self.mating_events} | Births: {self.births}"
+            mating_info = f"Mating Craters: {mating_craters} | Mating Events: {self.mating_events} | Births: {self.births}"
             mating_surface = self.font.render(mating_info, True, TEXT_COLOR)
-            surface.blit(mating_surface, (10, 30))
+            surface.blit(mating_surface, (10, 50))
             
             # Age info
             age_info = f"Avg Age: {int(avg_age)} | Max Age: {max_age} | Y: {young_craters} | A: {adult_craters} | M: {mature_craters} | E: {elder_craters}"
             age_surface = self.font.render(age_info, True, TEXT_COLOR)
-            surface.blit(age_surface, (10, 50))
+            surface.blit(age_surface, (10, 70))
             
             # Inactivity info
             inactive_info = f"Inactive Craters: {inactive_craters} | Avg Inactive Frames: {int(avg_inactive_frames)}"
             inactive_surface = self.font.render(inactive_info, True, TEXT_COLOR)
-            surface.blit(inactive_surface, (10, 70))
+            surface.blit(inactive_surface, (10, 90))
             
             # Performance info
             perf_info = f"Frame Time: {self.avg_frame_time*1000:.1f}ms | FPS: {1.0/max(self.avg_frame_time, 0.001):.1f}"
             perf_surface = self.font.render(perf_info, True, TEXT_COLOR)
-            surface.blit(perf_surface, (10, 90))
+            surface.blit(perf_surface, (10, 110))
     
     def toggle_sensors(self):
         """Toggle the visibility of sensor rays"""
