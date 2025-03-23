@@ -31,14 +31,14 @@ class Crater:
     """
     Represents a crater entity with neural network-based behavior
     """
-    def __init__(self, x=None, y=None, size=40, font=None, brain=None):
+    def __init__(self, x=None, y=None, size=20, font=None, brain=None):
         """
         Initialize crater with random or specified attributes
         
         Args:
             x (float, optional): X coordinate. If None, a random position is used.
             y (float, optional): Y coordinate. If None, a random position is used.
-            size (int, optional): Crater size. Default is 40 for all craters (doubled from 20).
+            size (int, optional): Crater size. Default is 20 for all craters.
             font: Pygame font for energy display
             brain: Neural network to use. If None, a new one is created.
         """
@@ -441,16 +441,13 @@ class Crater:
             if not food.active:
                 continue
                 
-            # Distance to food using faster square distance calculation
+            # Distance to food
             dx = food.x - self.x
             dy = food.y - self.y
-            distance_squared = dx*dx + dy*dy
-            
-            # Collision threshold squared (avoids costly square root)
-            collision_threshold_squared = (self.size + food.size) * (self.size + food.size)
+            distance = math.sqrt(dx*dx + dy*dy)
             
             # If collision
-            if distance_squared < collision_threshold_squared:
+            if distance < self.size + food.size:
                 # Absorb energy
                 self.energy = min(self.max_energy, self.energy + food.energy)
                 food.active = False
@@ -477,17 +474,13 @@ class Crater:
             if other is self or not isinstance(other, Crater) or not hasattr(other, 'is_mating') or not other.is_mating:
                 continue
                 
-            # Calculate distance using faster square distance
+            # Calculate distance
             dx = other.x - self.x
             dy = other.y - self.y
-            distance_squared = dx*dx + dy*dy
-            
-            # Mating threshold squared (includes +10 extra units for easier mating)
-            mating_threshold = self.size + other.size + 10
-            mating_threshold_squared = mating_threshold * mating_threshold
+            distance = math.sqrt(dx*dx + dy*dy)
             
             # If close enough
-            if distance_squared < mating_threshold_squared:
+            if distance < self.size + other.size + 10:
                 return other
                 
         return None
@@ -881,7 +874,7 @@ class Crater:
                     Crater.AGE_COLORS[i/10] = (r, g, b)
         
         # Draw fewer sensor rays for performance
-        ray_step = 2
+        ray_step = 1  # Changed from 2 to 1 to show all sensors
         
         # Filter craters in advance to avoid doing it for each sensor ray
         nearby_craters = None
