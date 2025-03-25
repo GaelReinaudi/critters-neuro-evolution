@@ -2,6 +2,11 @@
 
 A 2D simulation of triangular craters moving on a plane with neural network-controlled behavior, energy management, and natural mating-based evolution.
 
+## Demo Video
+[![Evolution in Action: Neural Network Craters Learn to Survive](https://img.youtube.com/vi/88SG8uD1GIw/maxresdefault.jpg)](https://www.youtube.com/watch?v=88SG8uD1GIw)
+
+Watch as triangular craters evolve from random movement to purposeful behavior in this fascinating simulation! The video shows a comparison between newly spawned craters moving randomly (top) and evolved craters after 50 generations showing intelligent behavior (bottom).
+
 ## Requirements
 - Python 3.x
 - Pygame (`pip install pygame`)

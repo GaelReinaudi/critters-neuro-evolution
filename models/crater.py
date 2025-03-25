@@ -6,7 +6,6 @@ import math
 import copy
 import pygame
 import numpy as np
-import pygad
 from craters.config import (
     WIDTH, HEIGHT, SENSOR_RANGE, NUM_SENSORS,
     DIRECTION_COLOR, ENERGY_TEXT_COLOR, INITIAL_ENERGY,
@@ -20,7 +19,7 @@ from craters.config import (
     NETWORK_HIDDEN_LAYERS, NETWORK_ACTIVATION, FOOD_DETECTION_RANGE,
     WALL_DETECTION_RANGE, TEEN_COLOR, MIDDLE_COLOR, SENIOR_COLOR
 )
-from craters.models.neural_network import SimpleNeuralNetwork, DeepNeuralNetwork, PyGADNeuralNetwork
+from craters.models.neural_network import SimpleNeuralNetwork, DeepNeuralNetwork, NEATNeuralNetwork
 
 # Precompute sensor angles if enabled
 if PRECOMPUTE_ANGLES:
@@ -80,10 +79,9 @@ class Crater:
             input_size = NUM_SENSORS * 5 + 1
             output_size = 3  # forward, reverse, rotation
             
-            # Use PyGADNeuralNetwork instead of the original networks
-            self.brain = PyGADNeuralNetwork(
+            # Use NEAT neural network
+            self.brain = NEATNeuralNetwork(
                 input_size=input_size,
-                hidden_layers=NETWORK_HIDDEN_LAYERS,
                 output_size=output_size
             )
         else:
@@ -654,7 +652,7 @@ class Crater:
     def create_offspring(cls, parent1, parent2, mutation_rate=MUTATION_RATE, 
                          mutation_scale=MUTATION_SCALE, energy=INITIAL_ENERGY):
         """
-        Create a new crater as an offspring of two parents with mutations using a custom genetic algorithm
+        Create a new crater as an offspring of two parents with mutations using NEAT
         
         Args:
             parent1 (Crater): First parent crater
@@ -666,29 +664,10 @@ class Crater:
         Returns:
             Crater: New crater with combined brain from parents and mutations
         """
-        # Get weights from both parents' brains
-        parent1_weights = np.array(parent1.brain.get_weights())
-        parent2_weights = np.array(parent2.brain.get_weights())
-        
-        # Perform uniform crossover (50/50 chance from each parent for each gene)
-        child_weights = np.zeros_like(parent1_weights)
-        for i in range(len(parent1_weights)):
-            if random.random() < 0.5:
-                child_weights[i] = parent1_weights[i]
-            else:
-                child_weights[i] = parent2_weights[i]
-        
-        # Apply mutations
-        for i in range(len(child_weights)):
-            if random.random() < mutation_rate:
-                child_weights[i] += random.gauss(0, 1) * mutation_scale
-        
-        # Create a new brain with the same architecture but the evolved weights
-        child_brain = PyGADNeuralNetwork(
-            input_size=parent1.brain.input_size,
-            hidden_layers=parent1.brain.hidden_layers,
-            output_size=parent1.brain.output_size,
-            weights=child_weights
+        # Create a new brain using NEAT crossover
+        child_brain = NEATNeuralNetwork.crossover(
+            parent1.brain,
+            parent2.brain
         )
         
         # Use position of one of the parents
