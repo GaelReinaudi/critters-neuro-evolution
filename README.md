@@ -1,11 +1,11 @@
-# Crater Simulation
+# Critter Simulation
 
-A 2D simulation of triangular craters moving on a plane with neural network-controlled behavior, energy management, and natural mating-based evolution.
+A 2D simulation of triangular critters moving on a plane with neural network-controlled behavior, energy management, and natural mating-based evolution.
 
 ## Demo Video
-[![Evolution in Action: Neural Network Craters Learn to Survive](https://img.youtube.com/vi/88SG8uD1GIw/maxresdefault.jpg)](https://www.youtube.com/watch?v=88SG8uD1GIw)
+[![Evolution in Action: Neural Network Critters Learn to Survive](https://img.youtube.com/vi/88SG8uD1GIw/maxresdefault.jpg)](https://www.youtube.com/watch?v=88SG8uD1GIw)
 
-Watch as triangular craters evolve from random movement to purposeful behavior in this fascinating simulation! The video shows a comparison between newly spawned craters moving randomly (top) and evolved craters after 50 generations showing intelligent behavior (bottom).
+Watch as triangular critters evolve from random movement to purposeful behavior in this fascinating simulation! The video shows a comparison between newly spawned critters moving randomly (top) and evolved critters after 50 generations showing intelligent behavior (bottom).
 
 ## Requirements
 - Python 3.x
@@ -14,50 +14,50 @@ Watch as triangular craters evolve from random movement to purposeful behavior i
 
 ## Running the Simulation
 ```
-python -m craters.main
+python -m critters.main
 ```
 
 ## Controls
 - **S key**: Toggle sensor visualization (on by default)
-- **E key**: Force top 20% of highest-energy craters to enter mating mode
+- **E key**: Force top 20% of highest-energy critters to enter mating mode
 - **ESC key**: Quit the simulation
 
 ## Features
-- 100 triangular craters with neural network-controlled movement
+- 100 triangular critters with neural network-controlled movement
 - Energy system:
-  - Craters consume energy when moving and rotating
-  - Craters must collect green food pellets to replenish energy
-  - Energy level displayed as a red number on each crater
-  - Craters get brighter as they gain more energy
-  - Craters that run out of energy transform into orange food pellets
+  - Critters consume energy when moving and rotating
+  - Critters must collect green food pellets to replenish energy
+  - Energy level displayed as a red number on each critter
+  - Critters get brighter as they gain more energy
+  - Critters that run out of energy transform into orange food pellets
 - Natural mating-based evolution:
-  - Craters automatically enter mating state (magenta color) when energy exceeds threshold
-  - Mating craters consume energy at twice the normal rate (indicated by "2x" and pulsing border)
-  - When two mating craters meet, they produce offspring
+  - Critters automatically enter mating state (magenta color) when energy exceeds threshold
+  - Mating critters consume energy at twice the normal rate (indicated by "2x" and pulsing border)
+  - When two mating critters meet, they produce offspring
   - Each parent loses half its energy during reproduction
   - Offspring inherit neural networks from both parents with some mutations
   - Population gradually evolves more effective behaviors over time
 - Age-based coloring:
-  - Young craters (blue): First stage of life
-  - Adult craters (green): Second stage of life
-  - Mature craters (yellow): Third stage of life 
-  - Elder craters (red): Final stage of life
+  - Young critters (blue): First stage of life
+  - Adult critters (green): Second stage of life
+  - Mature critters (yellow): Third stage of life 
+  - Elder critters (red): Final stage of life
   - Colors transition smoothly between stages
   - Brightness still affected by energy level
 - Visual enhancements:
   - Cyan dot indicating direction of movement
   - Multi-colored sensors showing what is being detected:
     - Red rays - Wall detection
-    - Yellow rays - Crater detection
-    - Magenta rays - Mating crater detection
+    - Yellow rays - Critter detection
+    - Magenta rays - Mating critter detection
     - Green rays - Food detection
-    - Colored dots - Energy level of detected craters
+    - Colored dots - Energy level of detected critters
   - Green food pellets appear randomly on the screen
-  - Orange food pellets come from dead craters
-  - Magenta pulsing border indicates craters in mating state
-- Each crater has 8 sensors detecting:
+  - Orange food pellets come from dead critters
+  - Magenta pulsing border indicates critters in mating state
+- Each critter has 8 sensors detecting:
   - Distance to walls in different directions
-  - Distance to other craters in different directions
+  - Distance to other critters in different directions
 - Simple neural network with:
   - 17 inputs (8 directions x 2 readings per direction + energy level)
   - 12 hidden neurons
@@ -68,11 +68,11 @@ python -m craters.main
   - Wall collision handling
 
 ## How It Works
-Each crater uses ray-casting to detect nearby objects and feeds this data to a neural network that decides how to move. The neural network outputs control thrust (forward/backward) and rotation. Craters must balance exploring to find food with conserving energy for survival. When a crater runs out of energy, it disappears and becomes an orange food pellet, creating a natural energy cycle in the ecosystem.
+Each critter uses ray-casting to detect nearby objects and feeds this data to a neural network that decides how to move. The neural network outputs control thrust (forward/backward) and rotation. Critters must balance exploring to find food with conserving energy for survival. When a critter runs out of energy, it disappears and becomes an orange food pellet, creating a natural energy cycle in the ecosystem.
 
-When a crater's energy exceeds a threshold, it automatically enters a mating state (turning magenta). If two craters in mating state collide, they produce offspring with neural networks that combine features from both parents with some random mutations. This natural selection process favors craters with strategies that effectively find food and manage energy. Over generations, the population evolves more sophisticated behaviors without any external intervention.
+When a critter's energy exceeds a threshold, it automatically enters a mating state (turning magenta). If two critters in mating state collide, they produce offspring with neural networks that combine features from both parents with some random mutations. This natural selection process favors critters with strategies that effectively find food and manage energy. Over generations, the population evolves more sophisticated behaviors without any external intervention.
 
-As craters age, their color changes to reflect their life stage, progressing from blue (young) to green (adult) to yellow (mature) to red (elder). This visual cue allows you to identify which craters have survived the longest and are potentially carrying the most successful genetic information.
+As critters age, their color changes to reflect their life stage, progressing from blue (young) to green (adult) to yellow (mature) to red (elder). This visual cue allows you to identify which critters have survived the longest and are potentially carrying the most successful genetic information.
 
 ## Code Structure
 The project follows a modular architecture:
@@ -80,13 +80,13 @@ The project follows a modular architecture:
 - `main.py` - Entry point to run the simulation
 - `simulation.py` - Main simulation logic class
 - `models/`
-  - `crater.py` - Crater entity with neural network brain
+  - `critter.py` - Critter entity with neural network brain
   - `food.py` - Food pellet entity
   - `neural_network.py` - Simple neural network implementation
 
 ## Customization
 Edit `config.py` to modify:
-- Number of craters and food pellets
+- Number of critters and food pellets
 - Energy consumption and replenishment rates
 - Neural network architecture
 - Sensor range and sensitivity
