@@ -6,7 +6,7 @@ import math
 import copy
 import pygame
 import numpy as np
-from craters.config import (
+from config import (
     WIDTH, HEIGHT, SENSOR_RANGE, NUM_SENSORS,
     DIRECTION_COLOR, ENERGY_TEXT_COLOR, INITIAL_ENERGY,
     MAX_ENERGY, ENERGY_DEPLETION_RATE, ENERGY_ROTATION_COST,
@@ -19,7 +19,7 @@ from craters.config import (
     NETWORK_HIDDEN_LAYERS, NETWORK_ACTIVATION, FOOD_DETECTION_RANGE,
     WALL_DETECTION_RANGE, TEEN_COLOR, MIDDLE_COLOR, SENIOR_COLOR
 )
-from craters.models.neural_network import SimpleNeuralNetwork, DeepNeuralNetwork, NEATNeuralNetwork
+from models.neural_network import SimpleNeuralNetwork, DeepNeuralNetwork, NEATNeuralNetwork
 
 # Precompute sensor angles if enabled
 if PRECOMPUTE_ANGLES:

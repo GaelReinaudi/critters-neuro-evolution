@@ -1,7 +1,7 @@
 """
 Spatial hash grid for efficient entity collision detection
 """
-from craters.config import CELL_SIZE
+from config import CELL_SIZE
 
 class SpatialHash:
     """

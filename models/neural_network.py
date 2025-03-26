@@ -2,7 +2,6 @@
 Neural network implementations for craters simulation
 """
 import numpy as np
-import pygad.nn as pygad_nn
 import neat
 import math
 import random
@@ -244,7 +243,7 @@ class NEATNeuralNetwork:
             neat.config.Config: Default NEAT configuration
         """
         # Create a directory for NEAT config if it doesn't exist
-        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config')
+        config_dir = os.path.join(os.getcwd(), 'config')
         os.makedirs(config_dir, exist_ok=True)
         
         # Create config file path

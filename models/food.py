@@ -3,7 +3,7 @@ Food model for the crater simulation
 """
 import random
 import pygame
-from craters.config import (
+from config import (
     WIDTH, HEIGHT, FOOD_COLOR, FOOD_ENERGY
 )
 

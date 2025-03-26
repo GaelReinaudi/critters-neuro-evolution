@@ -4,7 +4,7 @@ Main simulation logic for crater simulation
 import random
 import time
 import pygame
-from craters.config import (
+from config import (
     NUM_CRATERS, NUM_FOOD_PELLETS, TEXT_COLOR,
     FOOD_SPAWN_INTERVAL, ORANGE_FOOD_COLOR,
     AGE_TEEN, AGE_YOUNG, AGE_ADULT, AGE_MIDDLE, AGE_MATURE, AGE_SENIOR,
@@ -13,9 +13,9 @@ from craters.config import (
     FPS, MATING_DURATION, CELL_SIZE,
     FOOD_DETECTION_RANGE
 )
-from craters.models.crater import Crater
-from craters.models.food import Food
-from craters.spatial_hash import SpatialHash
+from models.crater import Crater
+from models.food import Food
+from spatial_hash import SpatialHash
 
 class CraterSimulation:
     """

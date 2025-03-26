@@ -3,12 +3,12 @@ Main entry point for crater simulation
 """
 import sys
 import pygame
-from craters.config import (
+from config import (
     WIDTH, HEIGHT, BACKGROUND_COLOR, FPS, FONT_SIZE,
     USE_SPATIAL_HASH, BATCH_PROCESSING, PRECOMPUTE_ANGLES,
     USE_GPU_ACCELERATION, USE_DOUBLE_BUFFER, VSYNC_ENABLED
 )
-from craters.simulation import CraterSimulation
+from simulation import CraterSimulation
 
 def main():
     """Main function to run the crater simulation"""

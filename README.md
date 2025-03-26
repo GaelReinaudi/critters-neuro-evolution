@@ -8,14 +8,64 @@ A 2D simulation of triangular critters moving on a plane with neural network-con
 Watch as triangular critters evolve from random movement to purposeful behavior in this fascinating simulation! The video shows a comparison between newly spawned critters moving randomly (top) and evolved critters after 50 generations showing intelligent behavior (bottom).
 
 ## Requirements
-- Python 3.x
-- Pygame (`pip install pygame`)
-- NumPy (`pip install numpy`)
+- Python 3.6 or higher
+- Required Python packages (can be installed via pip):
+  - pygame
+  - numpy
+  - neat-python
+
+## Installation
+
+1. Clone this repository:
+   ```
+   git clone <repository-url>
+   cd critters-neuro-evolution
+   ```
+
+2. Install the required dependencies using one of these methods:
+
+   **Method 1: Using requirements.txt**
+   ```
+   pip install -r requirements.txt
+   ```
+
+   **Method 2: Using setup.py**
+   ```
+   pip install -e .
+   ```
 
 ## Running the Simulation
+
+You can run the simulation directly from the root directory using:
+
 ```
-python -m critters.main
+python run.py
 ```
+
+or:
+
+```
+python main.py
+```
+
+or (if you've made run.py executable):
+
+```
+./run.py
+```
+
+## Troubleshooting
+
+- **Display Issues**: If you encounter display errors, try adjusting the display settings in `config.py`:
+  - Set `USE_GPU_ACCELERATION = False` to disable hardware acceleration
+  - Set `USE_DOUBLE_BUFFER = False` if double buffering causes issues
+  - Reduce `WIDTH` and `HEIGHT` for lower-end machines
+
+- **Performance Issues**: For improved performance on slower machines:
+  - Reduce `NUM_CRATERS` and `NUM_FOOD_PELLETS` in `config.py`
+  - Set `REDUCE_DRAW_DETAIL = True` to simplify rendering
+
+- **ModuleNotFoundError**: If you get import errors, ensure you're running from the project root directory
 
 ## Controls
 - **S key**: Toggle sensor visualization (on by default)
@@ -79,8 +129,9 @@ The project follows a modular architecture:
 - `config.py` - Central configuration parameters
 - `main.py` - Entry point to run the simulation
 - `simulation.py` - Main simulation logic class
+- `spatial_hash.py` - Spatial partitioning for efficient collision detection
 - `models/`
-  - `critter.py` - Critter entity with neural network brain
+  - `crater.py` - Critter entity with neural network brain
   - `food.py` - Food pellet entity
   - `neural_network.py` - Simple neural network implementation
 
